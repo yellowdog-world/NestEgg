@@ -1,65 +1,62 @@
-import Image from "next/image";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { BookOpen, Calculator, Wallet } from "lucide-react";
 
-export default function Home() {
+const cards = [
+  {
+    href: "/wiki",
+    icon: BookOpen,
+    title: "은퇴 정보 위키",
+    desc: "연저펀·ISA·IRP 활용법, 인출 순서, 세금/건보료 가이드",
+  },
+  {
+    href: "/sim",
+    icon: Calculator,
+    title: "시뮬레이터",
+    desc: "인출 세금, 1500만원 한도, 자산 고갈, FIRE, 해외 ETF 세금 비교",
+  },
+  {
+    href: "/assets",
+    icon: Wallet,
+    title: "내 자산",
+    desc: "증권사 앱 캡처 → AI가 자동 등록 → 시계열로 자산 변화 추적",
+  },
+];
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string; next?: string }>;
+}) {
+  const sp = await searchParams;
+  if (sp.code) {
+    const qs = new URLSearchParams({ code: sp.code, ...(sp.next ? { next: sp.next } : {}) });
+    redirect(`/auth/callback?${qs}`);
+  }
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="flex flex-col gap-8">
+      <header className="flex flex-col gap-2">
+        <h1 className="text-3xl font-semibold tracking-tight">은퇴 자산 관리</h1>
+        <p className="text-neutral-600">
+          세금은 낮추고, 현금 흐름은 끝까지. 정보 → 시뮬레이터 → 내 자산 적용까지.
+        </p>
+      </header>
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {cards.map(({ href, icon: Icon, title, desc }) => (
+          <Link
+            key={href}
+            href={href}
+            className="group flex flex-col gap-3 rounded-xl border border-neutral-200 bg-white p-5 transition-colors hover:border-neutral-400"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+            <Icon className="h-6 w-6 text-amber-500" />
+            <div className="flex flex-col gap-1">
+              <h2 className="text-lg font-medium group-hover:underline">{title}</h2>
+              <p className="text-sm text-neutral-600">{desc}</p>
+            </div>
+          </Link>
+        ))}
+      </section>
     </div>
   );
 }
