@@ -563,14 +563,121 @@ function generateGuide(
   return tips;
 }
 
+// ── Slider Panel ─────────────────────────────────────────────────────────────
+
+const SLIDERS: {
+  key: keyof RetirementProfile;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  format: (v: number) => string;
+}[] = [
+  {
+    key: "monthlyBudget",
+    label: "월 생활비",
+    min: 500_000,
+    max: 10_000_000,
+    step: 100_000,
+    format: (v) => `${Math.round(v / 10_000)}만원`,
+  },
+  {
+    key: "nationalPensionMonthly",
+    label: "국민연금 월수령",
+    min: 0,
+    max: 3_000_000,
+    step: 50_000,
+    format: (v) => (v === 0 ? "없음" : `${Math.round(v / 10_000)}만원`),
+  },
+  {
+    key: "privatePensionYearly",
+    label: "개인연금 연수령",
+    min: 0,
+    max: 50_000_000,
+    step: 1_000_000,
+    format: (v) => (v === 0 ? "없음" : `${Math.round(v / 10_000)}만원`),
+  },
+  {
+    key: "retirementAge",
+    label: "은퇴 목표 나이",
+    min: 40,
+    max: 85,
+    step: 1,
+    format: (v) => `${v}세`,
+  },
+  {
+    key: "targetAge",
+    label: "자산 생존 목표",
+    min: 75,
+    max: 100,
+    step: 1,
+    format: (v) => `${v}세`,
+  },
+];
+
+function SliderPanel({
+  profile,
+  onChange,
+}: {
+  profile: RetirementProfile;
+  onChange: (p: RetirementProfile) => void;
+}) {
+  return (
+    <section className="rounded-xl border border-neutral-200 bg-white p-5">
+      <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-neutral-500">
+        파라미터 조정
+      </h2>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {SLIDERS.map((s) => {
+          const value = profile[s.key] as number;
+          const pct = ((value - s.min) / (s.max - s.min)) * 100;
+          return (
+            <div key={s.key} className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-neutral-600">{s.label}</span>
+                <span className="font-semibold tabular-nums text-neutral-900">
+                  {s.format(value)}
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="range"
+                  min={s.min}
+                  max={s.max}
+                  step={s.step}
+                  value={value}
+                  onChange={(e) =>
+                    onChange({ ...profile, [s.key]: Number(e.target.value) })
+                  }
+                  className="w-full cursor-pointer appearance-none rounded-full bg-neutral-200 accent-amber-500"
+                  style={{
+                    height: "6px",
+                    backgroundImage: `linear-gradient(to right, #f59e0b ${pct}%, #e5e7eb ${pct}%)`,
+                  }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-neutral-400">
+                <span>{s.format(s.min)}</span>
+                <span>{s.format(s.max)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function Dashboard({
   profile,
   portfolioData,
   onEdit,
+  onProfileChange,
 }: {
   profile: RetirementProfile;
   portfolioData: PortfolioData;
   onEdit: () => void;
+  onProfileChange: (p: RetirementProfile) => void;
 }) {
   const now = new Date();
   const dateStr = `${now.getFullYear()}년 ${now.getMonth() + 1}월 기준`;
@@ -670,6 +777,9 @@ function Dashboard({
           accent={survivalOk ? "green" : "red"}
         />
       </div>
+
+      {/* 슬라이더 패널 */}
+      <SliderPanel profile={profile} onChange={onProfileChange} />
 
       {/* 자산 포트폴리오 비중 */}
       {totalNetAssets > 0 && (
@@ -799,6 +909,10 @@ export function RetirementDashboard({ portfolioData }: { portfolioData: Portfoli
       profile={profile}
       portfolioData={portfolioData}
       onEdit={() => setEditing(true)}
+      onProfileChange={(p) => {
+        setProfile(p);
+        saveProfile(p);
+      }}
     />
   );
 }
