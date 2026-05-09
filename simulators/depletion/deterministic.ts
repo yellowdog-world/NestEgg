@@ -45,14 +45,26 @@ export function computeDepletion(input: DepletionInput): DepletionOutput {
 
   for (let i = 0; i < horizonYears; i++) {
     const age = startAge + i;
+
+    // 고갈 이후 구간: 0으로 고정
+    if (depletedAtAge !== null) {
+      series.push({
+        age,
+        withdrawal: 0,
+        realWithdrawal: 0,
+        endAssets: 0,
+        realEndAssets: 0,
+      });
+      continue;
+    }
+
     const inflateFactor = inflateWithdrawal ? Math.pow(1 + inflation, i) : 1;
     const wd = yearlyWithdrawal * inflateFactor;
 
     // 연초 인출 → 잔여 자산이 1년간 expectedReturn으로 성장 (단순 모델)
     const afterWd = assets - wd;
-    if (afterWd <= 0 && depletedAtAge === null) {
+    if (afterWd <= 0) {
       depletedAtAge = age;
-      // 그 해의 잔액은 0으로 처리
       series.push({
         age,
         withdrawal: wd,

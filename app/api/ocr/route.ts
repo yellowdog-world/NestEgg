@@ -3,6 +3,9 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { extractHoldingsFromImage } from "@/lib/ocr/claude";
 import { resolveSecurity } from "@/lib/market/resolve-security";
+import { lookupByTicker, deriveTickerInfo } from "@/lib/market/ticker-map";
+import { fetchNaverName, fetchYahooName } from "@/lib/market/external-apis";
+import { fetchPriceMap, fetchUsdKrwRate } from "@/lib/market/price";
 
 const Body = z.object({
   imagePath: z.string().min(1),                    // Supabase Storage path
@@ -54,6 +57,58 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // ── 사전처리: 티커 → 정식 종목명 해석 (티커 우선순위) ─────────────────────────
+  await Promise.all(
+    ocr.data.holdings.map(async (h) => {
+      const rawTicker = h.ticker?.trim().toUpperCase();
+      if (!rawTicker) return;
+
+      // 1. 정적 맵
+      const staticHit = lookupByTicker(rawTicker);
+      if (staticHit?.name) { h.raw_name = staticHit.name; return; }
+
+      // 2. KRX 6자리 → Naver Finance
+      if (/^\d{6}$/.test(rawTicker)) {
+        const name = await fetchNaverName(rawTicker);
+        if (name) { h.raw_name = name; return; }
+      }
+
+      // 3. US 티커 → Yahoo Finance
+      const info = deriveTickerInfo(rawTicker);
+      if (info) {
+        const name = await fetchYahooName(rawTicker);
+        if (name) { h.raw_name = name; return; }
+      }
+    }),
+  );
+
+  // ── 티커 기반 실시간 시세 조회 → market_price를 라이브 값으로 보정 ──────────────
+  // 통화가 일치하는 티커만 사용 (예: KRW 종목에 QQQ 티커가 붙은 경우는 OCR 오류이므로 무시)
+  {
+    const tickerItems: { ticker: string; market: string }[] = [];
+    for (const h of ocr.data.holdings) {
+      const t = h.ticker?.trim().toUpperCase();
+      if (!t) continue;
+      const info = lookupByTicker(t)?.info ?? deriveTickerInfo(t);
+      if (!info) continue;
+      // 통화 불일치 → 티커가 잘못됨 → 스킵
+      if ((info.currency ?? "KRW") !== (h.currency ?? "KRW")) continue;
+      tickerItems.push({ ticker: t, market: info.market });
+    }
+
+    if (tickerItems.length > 0) {
+      const priceMap = await fetchPriceMap(tickerItems);
+      for (const h of ocr.data.holdings) {
+        const t = h.ticker?.trim().toUpperCase();
+        if (!t) continue;
+        const info = lookupByTicker(t)?.info ?? deriveTickerInfo(t);
+        if (!info || (info.currency ?? "KRW") !== (h.currency ?? "KRW")) continue;
+        const live = priceMap.get(t);
+        if (live) h.market_price = live.price;
+      }
+    }
+  }
+
   // ── 사후검증 1: 시스템적 avg/market 스왑 자동교정 ─────────────────────────────
   // 증상: OCR이 매입가/현재가를 전체적으로 뒤집어 읽고, 평가손익을 eval_amount에 저장.
   // 조건: 가격이 있는 종목 중 절반 이상이 avg>market + profit_loss=null + eval_amount>0
@@ -78,6 +133,87 @@ export async function POST(request: NextRequest) {
       const swapNote = `[avg_market 자동교정] 매입가/현재가 전위(轉位) 감지 — 자동 교정 적용. 값을 반드시 확인하세요`;
       ocr.data.confidence = "low";
       ocr.data.notes = ocr.data.notes ? `${ocr.data.notes} | ${swapNote}` : swapNote;
+    }
+  }
+
+  // ── 사후검증 2-extra: avg_price가 주당 단가가 아닌 총액으로 들어온 경우 교정 ────────
+  //
+  // Pattern A: 평가손익 총액이 avg에 → 교정: avg = market − avg/qty
+  // Pattern B: 매입금액 총액이 avg에 → 교정: avg = avg / qty
+  //
+  // 핵심: batchMedian은 market_price 없이도 계산 (2-pass robust median)
+  //       market_price가 없는 화면(IRP 매매비용 탭 등)에서도 동작
+  {
+    // ① 2-pass robust median: market_price 불필요, avg_price만으로 계산
+    const allAvgs = ocr.data.holdings
+      .filter((h) => !h.raw_name.includes("예수금") && h.avg_price != null && h.avg_price > 0 && h.quantity > 0)
+      .map((h) => h.avg_price!)
+      .sort((a, b) => a - b);
+
+    let batchMedian: number | null = null;
+    if (allAvgs.length >= 2) {
+      const roughMedian = allAvgs[Math.floor(allAvgs.length / 2)];
+      // 2차: roughMedian × 30 초과값 제거 후 재계산 (총액 outlier 제거)
+      const filtered = allAvgs.filter((v) => v <= roughMedian * 30);
+      if (filtered.length > 0) batchMedian = filtered[Math.floor(filtered.length / 2)];
+    }
+
+    const correctedNames: string[] = [];
+
+    for (const h of ocr.data.holdings) {
+      if (h.raw_name.includes("예수금") || h.avg_price == null || h.quantity <= 0) continue;
+
+      // 음수 avg → profit_loss 이동
+      if (h.avg_price < 0) {
+        if (h.profit_loss == null) h.profit_loss = h.avg_price;
+        h.avg_price = null;
+        correctedNames.push(h.raw_name);
+        continue;
+      }
+
+      // 기준가: live market 우선, 없으면 batchMedian
+      const refPrice = h.market_price ?? batchMedian;
+      if (refPrice == null) continue;
+
+      // 기준가 대비 20배 초과 → 총액이 들어온 것으로 판단
+      if (h.avg_price <= refPrice * 20) continue;
+
+      const candidateB = h.avg_price / h.quantity;         // 총액÷수량
+      const candidateA = h.market_price != null             // market 역산
+        ? h.market_price - h.avg_price / h.quantity
+        : null;
+
+      let corrected: number | null = null;
+      let pattern: "A" | "B" | null = null;
+
+      if (h.market_price != null) {
+        const bInRange = candidateB >= h.market_price * 0.3 && candidateB <= h.market_price * 3;
+        const aValid   = candidateA != null && candidateA > 0 && candidateA < h.market_price * 0.95;
+
+        if (bInRange && aValid) {
+          const bRatio = candidateB / h.market_price;
+          // candidateB가 현재가와 70%~140% 범위 → 매입금액 총액 (Pattern B)
+          corrected = (bRatio >= 0.7 && bRatio <= 1.4) ? candidateB : (candidateA ?? candidateB);
+          pattern   = (bRatio >= 0.7 && bRatio <= 1.4) ? "B" : "A";
+        } else if (bInRange) { corrected = candidateB; pattern = "B"; }
+        else if (aValid)     { corrected = candidateA; pattern = "A"; }
+      } else if (batchMedian != null) {
+        // live price 없음 → batch median으로 candidateB 검증
+        if (candidateB >= batchMedian * 0.1 && candidateB <= batchMedian * 10) {
+          corrected = candidateB; pattern = "B";
+        }
+      }
+
+      if (corrected != null && corrected > 0) {
+        if (pattern === "A" && h.profit_loss == null) h.profit_loss = h.avg_price;
+        h.avg_price = parseFloat(corrected.toFixed(4));
+        correctedNames.push(h.raw_name);
+      }
+    }
+
+    if (correctedNames.length > 0) {
+      const note = `[평단가 자동교정] ${correctedNames.join(", ")}`;
+      ocr.data.notes = ocr.data.notes ? `${ocr.data.notes} | ${note}` : note;
     }
   }
 

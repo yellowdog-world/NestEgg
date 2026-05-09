@@ -23,7 +23,9 @@ export default function Limit1500Page() {
               label="연 인출액"
               value={input.yearlyWithdrawal}
               onChange={(v) => setInput({ ...input, yearlyWithdrawal: v })}
-              unit="원"
+              unit="만원"
+              step={1_000_000}
+              divisor={10_000}
             />
             <NumberField
               label="만 나이"
@@ -36,7 +38,9 @@ export default function Limit1500Page() {
               label="다른 종합과세 소득"
               value={input.otherTaxableIncome}
               onChange={(v) => setInput({ ...input, otherTaxableIncome: v })}
-              unit="원/연"
+              unit="만원"
+              step={1_000_000}
+              divisor={10_000}
               hint="근로/사업/이자배당 등 종합과세 합산 대상의 합. 모르면 0."
             />
           </>

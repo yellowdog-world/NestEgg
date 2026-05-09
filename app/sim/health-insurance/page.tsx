@@ -23,14 +23,18 @@ export default function HealthInsurancePage() {
               label="연 종합과세 소득"
               value={input.yearlyIncome}
               onChange={(v) => setInput({ ...input, yearlyIncome: v })}
-              unit="원/연"
+              unit="만원"
+              step={1_000_000}
+              divisor={10_000}
               hint="연금 + 배당 + 사업 + 임대 등. 분리과세 1500만 이하 사적연금은 제외 가능."
             />
             <MoneyField
               label="재산 과세표준"
               value={input.propertyTaxBase}
               onChange={(v) => setInput({ ...input, propertyTaxBase: v })}
-              unit="원"
+              unit="만원"
+              step={1_000_000}
+              divisor={10_000}
               hint="주택/토지 등 재산세 과세표준. 모르면 공시가액의 60% 정도로 추정."
             />
             <ToggleField

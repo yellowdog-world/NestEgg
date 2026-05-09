@@ -259,6 +259,75 @@ export default async function AssetsPage() {
   }
   autoDividends.sort((a, b) => (a.received_at > b.received_at ? -1 : 1));
 
+  // ── 12. 최근 1년 배당 합계 (시뮬 브릿지용) ───────────────────────────────────
+  const oneYearAgo = new Date(Date.now() - 365 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const yearlyDivKrw = Math.round(
+    autoDividends
+      .filter((d) => d.received_at >= oneYearAgo)
+      .reduce((s, d) => s + d.amount_krw, 0),
+  );
+
+  // ── 빈 상태: 계좌가 아직 없는 신규 사용자 ──────────────────────────────────
+  const isFirstTime = accountList.length === 0;
+
+  if (isFirstTime) {
+    return (
+      <div className="flex flex-col gap-6">
+        <header>
+          <h1 className="text-2xl font-semibold tracking-tight">내 자산</h1>
+        </header>
+
+        <div className="rounded-2xl border border-amber-200 bg-gradient-to-b from-amber-50 to-white p-6">
+          <div className="mb-6 text-center">
+            <span className="text-5xl">🐕</span>
+            <h2 className="mt-3 text-lg font-semibold text-neutral-800">
+              어서오세요! 자산을 등록해 볼까요?
+            </h2>
+            <p className="mt-1.5 text-sm text-neutral-500">
+              증권사 앱 화면을 캡처하면 AI가 종목·수량·평단가를 자동으로 읽어드려요.
+            </p>
+          </div>
+
+          {/* 플로우 스텝 */}
+          <div className="mb-6 flex items-start gap-0">
+            {[
+              { step: "1", icon: "🏦", title: "계좌 등록", desc: "증권사·계좌 유형 입력" },
+              { step: "2", icon: "📷", title: "화면 캡처", desc: "보유 종목 화면 촬영" },
+              { step: "3", icon: "✨", title: "AI 자동 추출", desc: "종목·수량·평단가 완성" },
+            ].map((s, i) => (
+              <div key={s.step} className="flex flex-1 flex-col items-center gap-1.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 text-white">
+                  <span className="text-lg">{s.icon}</span>
+                </div>
+                <p className="text-xs font-semibold text-neutral-800">{s.title}</p>
+                <p className="text-center text-[11px] text-neutral-500">{s.desc}</p>
+                {i < 2 && (
+                  <div className="absolute mt-4 hidden" />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* 화살표를 별도 레이어로 */}
+          <div className="relative -mt-16 mb-8 flex items-center justify-around px-10">
+            <span className="text-neutral-300 text-lg">→</span>
+            <span className="text-neutral-300 text-lg">→</span>
+          </div>
+
+          <Link
+            href="/assets/upload"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-amber-600 active:scale-95 transition-transform"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            지금 바로 시작하기
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* 헤더 */}
@@ -312,6 +381,42 @@ export default async function AssetsPage() {
 
       {/* 뷰 스위처 (계좌별 / 유형별 / 증권사별 / 종목별) */}
       <AssetsViewSwitcher accounts={enrichedAccounts} usdKrw={usdKrw} />
+
+      {/* 시뮬레이터 바로가기 */}
+      {totalLiveKrw > 0 && (
+        <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+          <p className="mb-2.5 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            내 자산으로 시뮬레이터 실행
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/sim/fire?currentAssets=${totalLiveKrw}`}
+              className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50 active:scale-95 transition-transform"
+            >
+              🎯 FIRE 계산기
+            </Link>
+            <Link
+              href={`/sim/depletion?startAssets=${totalLiveKrw}`}
+              className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50 active:scale-95 transition-transform"
+            >
+              📉 자산 고갈 시뮬
+            </Link>
+            {yearlyDivKrw > 0 && (
+              <Link
+                href={`/sim/retire-cashflow?dividendYearly=${yearlyDivKrw}`}
+                className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50 active:scale-95 transition-transform"
+              >
+                💰 은퇴 현금흐름
+              </Link>
+            )}
+          </div>
+          <p className="mt-2 text-[11px] text-neutral-400">
+            현재 자산 {fmtKRWShort(totalLiveKrw)}
+            {yearlyDivKrw > 0 && ` · 최근 1년 배당 ${fmtKRWShort(yearlyDivKrw)}`}
+            을(를) 시뮬 기본값으로 채워줍니다.
+          </p>
+        </section>
+      )}
     </div>
   );
 }

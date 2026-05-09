@@ -23,13 +23,17 @@ export default function CorpSalaryPage() {
               label="법인 영업이익 (대표 급여 차감 전)"
               value={input.corpProfit}
               onChange={(v) => setInput({ ...input, corpProfit: v })}
-              unit="원/연"
+              unit="만원"
+              step={1_000_000}
+              divisor={10_000}
             />
             <MoneyField
               label="다른 종합과세 소득"
               value={input.otherIncome}
               onChange={(v) => setInput({ ...input, otherIncome: v })}
-              unit="원/연"
+              unit="만원"
+              step={1_000_000}
+              divisor={10_000}
             />
           </>
         )}

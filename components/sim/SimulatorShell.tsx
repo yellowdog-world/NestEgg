@@ -1,7 +1,27 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, useCallback, type ReactNode } from "react";
 import type { Simulator } from "@/simulators/types";
+
+function loadStored<I>(key: string, defaultInput: I): I {
+  if (typeof window === "undefined") return defaultInput;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return defaultInput;
+    return { ...defaultInput, ...JSON.parse(raw) };
+  } catch {
+    return defaultInput;
+  }
+}
+
+function saveStored<I>(key: string, value: I) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // private browsing / storage full 등 무시
+  }
+}
 
 type Props<I, O> = {
   simulator: Simulator<I, O>;
@@ -16,7 +36,20 @@ export function SimulatorShell<I extends object, O>({
   renderForm,
   renderResult,
 }: Props<I, O>) {
-  const [input, setInput] = useState<I>({ ...simulator.defaultInput, ...preset } as I);
+  const storageKey = `sim:${simulator.name}`;
+
+  const [input, setInputState] = useState<I>(() => {
+    const stored = loadStored(storageKey, simulator.defaultInput);
+    return { ...stored, ...preset } as I;
+  });
+
+  const setInput = useCallback(
+    (next: I) => {
+      setInputState(next);
+      saveStored(storageKey, next);
+    },
+    [storageKey],
+  );
 
   const { output, error } = useMemo(() => {
     const parsed = simulator.schema.safeParse(input);

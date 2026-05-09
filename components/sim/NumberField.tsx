@@ -55,42 +55,87 @@ export function NumberField({
   );
 }
 
-// ── 원화 필드: 포커스 해제 시 콤마 표시 ─────────────────────────────────────
+// ── 원화 필드: 단위 스케일 + +/- 버튼 ──────────────────────────────────────
+// divisor=1_000_000 → 백만원 단위로 표시/입력 (월 지출 등)
+// divisor=10_000_000 → 천만원 단위로 표시/입력 (연간 금액 등)
+// step 지정 시 +/- 버튼 표시 (원 단위 증감)
 type MoneyProps = {
   label: string;
-  value: number;
+  value: number;         // 내부값 (원 단위)
   onChange: (v: number) => void;
-  unit?: string;
+  unit?: string;         // 단위 레이블 (예: "백만원", "천만원")
+  step?: number;         // +/- 클릭당 증감량 (원 단위)
+  divisor?: number;      // 표시 스케일 (기본 1 = 원 단위 그대로)
   hint?: string;
   className?: string;
 };
 
-export function MoneyField({ label, value, onChange, unit, hint, className }: MoneyProps) {
-  const [focused, setFocused] = useState(false);
+const btnCls =
+  "shrink-0 rounded border border-neutral-300 bg-white px-3 py-1.5 text-base font-medium leading-none hover:bg-neutral-50 active:bg-neutral-100 select-none";
 
-  const display = focused
-    ? value === 0 ? "" : String(value)
-    : value === 0 ? "" : value.toLocaleString("ko-KR");
+export function MoneyField({ label, value, onChange, unit, step, divisor = 1, hint, className }: MoneyProps) {
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  // 표시값 = 원 단위 값 ÷ divisor
+  const scaled = value / divisor;
+  const displayFormatted = scaled === 0 ? "" : scaled.toLocaleString("ko-KR");
+
+  function handleFocus() {
+    setDraft(scaled === 0 ? "" : String(scaled));
+    setFocused(true);
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const raw = e.target.value.replace(/[^0-9]/g, "");
-    onChange(raw ? Number(raw) : 0);
+    // divisor > 1이면 소수점 허용 (예: 2.4 천만원 = 2400만원)
+    const raw = divisor > 1
+      ? e.target.value.replace(/[^0-9.]/g, "")
+      : e.target.value.replace(/[^0-9]/g, "");
+    setDraft(raw);
+    const n = parseFloat(raw);
+    if (!isNaN(n)) onChange(Math.round(n * divisor));
   }
+
+  function handleBlur() {
+    const n = parseFloat(draft);
+    onChange(!isNaN(n) ? Math.round(n * divisor) : 0);
+    setFocused(false);
+  }
+
+  const hasStepBtns = step != null;
 
   return (
     <label className={cn(labelCls, className)}>
       <span className={labelTitleCls}>{label}</span>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
+        {hasStepBtns && (
+          <button
+            type="button"
+            onClick={() => onChange(Math.max(0, value - step))}
+            className={btnCls}
+          >
+            −
+          </button>
+        )}
         <input
           type="text"
           inputMode="numeric"
-          value={display}
+          value={focused ? draft : displayFormatted}
           placeholder="0"
           onChange={handleChange}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           className={inputCls}
         />
+        {hasStepBtns && (
+          <button
+            type="button"
+            onClick={() => onChange(value + step)}
+            className={btnCls}
+          >
+            +
+          </button>
+        )}
         {unit && <span className={unitCls}>{unit}</span>}
       </div>
       {hint && <span className={hintCls}>{hint}</span>}
@@ -114,6 +159,7 @@ export function PercentField({
   label,
   value,
   onChange,
+  step,
   min,
   max,
   hint,
@@ -148,10 +194,26 @@ export function PercentField({
     setFocused(false);
   }
 
+  function handleStep(delta: number) {
+    const current = Number.isFinite(value) ? parseFloat((value * 100).toFixed(4)) : 0;
+    const next = current + delta;
+    const clamped = min !== undefined && next < min ? min
+      : max !== undefined && next > max ? max
+      : next;
+    onChange(parseFloat(clamped.toFixed(4)) / 100);
+  }
+
+  const hasStepBtns = step != null;
+
   return (
     <label className={cn(labelCls, className)}>
       <span className={labelTitleCls}>{label}</span>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
+        {hasStepBtns && (
+          <button type="button" onClick={() => handleStep(-step)} className={btnCls}>
+            −
+          </button>
+        )}
         <input
           type="text"
           inputMode="decimal"
@@ -161,6 +223,11 @@ export function PercentField({
           onBlur={handleBlur}
           className={inputCls}
         />
+        {hasStepBtns && (
+          <button type="button" onClick={() => handleStep(step)} className={btnCls}>
+            +
+          </button>
+        )}
         <span className={unitCls}>%</span>
       </div>
       {hint && <span className={hintCls}>{hint}</span>}

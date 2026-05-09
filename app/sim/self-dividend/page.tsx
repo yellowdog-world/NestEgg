@@ -23,7 +23,9 @@ export default function SelfDividendPage() {
               label="목표 수령액 (실수령)"
               value={input.targetYearlyAmount}
               onChange={(v) => setInput({ ...input, targetYearlyAmount: v })}
-              unit="원/연"
+              unit="만원"
+              step={1_000_000}
+              divisor={10_000}
             />
             <PercentField
               label="법인세 실효세율"
@@ -38,7 +40,9 @@ export default function SelfDividendPage() {
               label="다른 종합과세 소득"
               value={input.otherIncome}
               onChange={(v) => setInput({ ...input, otherIncome: v })}
-              unit="원/연"
+              unit="만원"
+              step={1_000_000}
+              divisor={10_000}
             />
           </>
         )}

@@ -23,7 +23,9 @@ export default function EtfTaxPage() {
               label="평가차익"
               value={input.capitalGain}
               onChange={(v) => setInput({ ...input, capitalGain: v })}
-              unit="원"
+              unit="만원"
+              step={1_000_000}
+              divisor={10_000}
             />
             <NumberField
               label="연저펀 인출 시 만 나이"

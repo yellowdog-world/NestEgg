@@ -1,7 +1,7 @@
 "use client";
 
 import { SimulatorShell } from "@/components/sim/SimulatorShell";
-import { NumberField, SelectField } from "@/components/sim/NumberField";
+import { MoneyField, NumberField, SelectField } from "@/components/sim/NumberField";
 import { pensionIncomeTaxSimulator } from "@/simulators/tax/pensionIncomeTax";
 import { fmtKRW, fmtPct } from "@/lib/utils/format";
 
@@ -18,13 +18,14 @@ export default function PensionTaxPage() {
         simulator={pensionIncomeTaxSimulator}
         renderForm={(input, setInput) => (
           <>
-            <NumberField
+            <MoneyField
               label="연 인출액"
               value={input.yearlyWithdrawal}
               onChange={(v) => setInput({ ...input, yearlyWithdrawal: v })}
-              unit="원"
+              unit="만원"
               step={1_000_000}
-              hint="만원 단위로 입력해도 OK. 1500만원 초과 시 한도 안내가 표시됩니다."
+              divisor={10_000}
+              hint="1500만원 초과 시 한도 안내가 표시됩니다."
             />
             <NumberField
               label="만 나이"
