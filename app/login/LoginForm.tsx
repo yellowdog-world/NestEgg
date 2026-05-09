@@ -46,8 +46,8 @@ export function LoginForm() {
       setStatus("error");
       setErrorMsg("코드가 올바르지 않거나 만료되었습니다.");
     } else {
-      router.push(next);
-      router.refresh();
+      // 서버 세션 쿠키 동기화를 위해 full reload
+      window.location.href = next;
     }
   }
 
