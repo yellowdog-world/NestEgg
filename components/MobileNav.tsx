@@ -2,20 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, Calculator, Wallet } from "lucide-react";
+import { Home, BookOpen, Calculator, Wallet, PiggyBank } from "lucide-react";
 
 const sections = [
-  { href: "/", label: "홈", icon: Home },
+  { href: "/", label: "홈", icon: Home, exact: true },
   { href: "/wiki", label: "위키", icon: BookOpen },
   { href: "/sim", label: "시뮬", icon: Calculator },
   { href: "/assets", label: "자산", icon: Wallet },
+  { href: "/assets/retirement", label: "은퇴", icon: PiggyBank },
 ];
 
 export function MobileNav() {
   const pathname = usePathname();
 
-  function isActive(href: string) {
-    if (href === "/") return pathname === "/";
+  function isActive(href: string, exact?: boolean) {
+    if (exact || href === "/") return pathname === href;
     return pathname.startsWith(href);
   }
 
@@ -25,8 +26,8 @@ export function MobileNav() {
         🐕 yellowdog
       </Link>
       <nav className="flex items-center gap-1">
-        {sections.map(({ href, label, icon: Icon }) => {
-          const active = isActive(href);
+        {sections.map(({ href, label, icon: Icon, exact }) => {
+          const active = isActive(href, exact);
           return (
             <Link
               key={href}
