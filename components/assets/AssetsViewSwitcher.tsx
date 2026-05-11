@@ -201,6 +201,7 @@ export function AssetsViewSwitcher({
                 holdings={holdings}
                 totalEvalKrw={totalEvalKrw}
                 totalCostKrw={totalCostKrw}
+                usdKrw={usdKrw}
               />
             ))
           )}

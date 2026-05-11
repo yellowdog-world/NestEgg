@@ -57,9 +57,15 @@ type Props = {
   holdings: HoldingWithLive[];
   totalEvalKrw: number;
   totalCostKrw: number;
+  usdKrw: number;
 };
 
-export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, totalCostKrw }: Props) {
+/** "1.91억원" → "1.91억" / "9011만원" → "9011만" */
+function fmtShort(n: number): string {
+  return fmtKRWShort(n).replace(/원$/, "");
+}
+
+export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, totalCostKrw, usdKrw }: Props) {
   const router = useRouter();
 
   const [editId, setEditId] = useState<string | null>(null);
@@ -353,7 +359,7 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                 );
               }
 
-              // 일반 종목 행 — 한 줄
+              // 일반 종목 행 — 한 줄 (수량·원금·평가·수익금·수익율)
               // 미국 주식은 티커, 한국 주식은 종목명 표시
               const displayName =
                 h.market !== "KRX" && h.ticker ? h.ticker : h.raw_name;
@@ -361,34 +367,63 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
               const changeSign = (h.livePriceChangePercent ?? 0) >= 0;
               const returnSign = (h.liveReturnPct ?? 0) >= 0;
 
+              // 원금(KRW) 계산: USD 종목은 avg_price × qty × usdKrw
+              const costKrw =
+                h.avg_price !== null
+                  ? h.market !== "KRX"
+                    ? h.avg_price * h.quantity * usdKrw
+                    : h.avg_price * h.quantity
+                  : null;
+              const gainKrw =
+                costKrw !== null && h.liveEvalKrw !== null
+                  ? h.liveEvalKrw - costKrw
+                  : null;
+
               return (
                 <div
                   key={h.id}
                   onClick={() => startEdit(h)}
-                  className="flex items-center gap-2 px-4 py-2 cursor-pointer hover:bg-neutral-50 transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 cursor-pointer hover:bg-neutral-50 transition-colors"
                 >
-                  {/* 종목명(또는 티커) + 등락률 */}
-                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                  {/* 종목명(또는 티커) + 당일등락률 */}
+                  <div className="flex min-w-0 flex-1 items-center gap-1">
                     <span className="truncate text-sm font-medium text-neutral-900">{displayName}</span>
                     {h.livePriceChangePercent != null && (
-                      <span className={`shrink-0 text-xs tabular-nums ${changeSign ? "text-red-500" : "text-blue-500"}`}>
+                      <span className={`shrink-0 text-[11px] tabular-nums ${changeSign ? "text-red-500" : "text-blue-500"}`}>
                         {changeSign ? "▲" : "▼"}{Math.abs(h.livePriceChangePercent).toFixed(2)}%
                       </span>
                     )}
                   </div>
 
-                  {/* 수량 */}
-                  <span className="shrink-0 text-xs tabular-nums text-neutral-400">
-                    {h.quantity.toLocaleString()}주
-                  </span>
+                  {/* 수량·원금·평가·수익금·수익율 */}
+                  <div className="flex shrink-0 items-center gap-1 text-[11px] tabular-nums">
+                    <span className="text-neutral-400">{h.quantity.toLocaleString()}주</span>
 
-                  {/* 평가금 + 수익률 */}
-                  <div className="shrink-0 text-right">
-                    <span className="text-sm font-semibold tabular-nums text-neutral-900">
-                      {h.liveEvalKrw != null ? fmtKRWShort(h.liveEvalKrw) : "—"}
-                    </span>
-                    {h.liveReturnPct != null && (
-                      <span className={`ml-1 text-xs tabular-nums ${returnSign ? "text-red-500" : "text-blue-500"}`}>
+                    {costKrw !== null && (
+                      <>
+                        <span className="text-neutral-200">·</span>
+                        <span className="text-neutral-400">원{fmtShort(costKrw)}</span>
+                      </>
+                    )}
+
+                    {h.liveEvalKrw !== null && (
+                      <>
+                        <span className="text-neutral-200">·</span>
+                        <span className="font-medium text-neutral-700">평{fmtShort(h.liveEvalKrw)}</span>
+                      </>
+                    )}
+
+                    {gainKrw !== null && (
+                      <>
+                        <span className="text-neutral-200">·</span>
+                        <span className={gainKrw >= 0 ? "text-red-500" : "text-blue-500"}>
+                          {gainKrw >= 0 ? "+" : ""}{fmtShort(gainKrw)}
+                        </span>
+                      </>
+                    )}
+
+                    {h.liveReturnPct !== null && (
+                      <span className={`font-semibold ${returnSign ? "text-red-500" : "text-blue-500"}`}>
                         {returnSign ? "+" : ""}{h.liveReturnPct.toFixed(1)}%
                       </span>
                     )}
