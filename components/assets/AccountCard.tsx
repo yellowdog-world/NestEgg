@@ -454,8 +454,8 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
         <div className="border-t border-neutral-100">
           {/* 컬럼 헤더 */}
           <div className="flex items-center gap-x-2 px-4 py-1.5 border-b border-neutral-50 text-[10px] text-neutral-400">
-            <span className="flex-1 min-w-0">종목명</span>
-            <span className="w-[40px] shrink-0 text-right">보유수</span>
+            <span className="flex-1 min-w-0 max-w-[130px]">종목명</span>
+            <span className="ml-auto w-[40px] shrink-0 text-right">보유수</span>
             <span className="w-[56px] shrink-0 text-right">평가</span>
             <span className="w-[52px] shrink-0 text-right">수익율</span>
           </div>
@@ -470,8 +470,8 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                   : "—";
                 return (
                   <div key={h.id} className="flex items-center gap-x-2 px-4 py-2 bg-neutral-50/60 text-xs tabular-nums">
-                    <span className="flex-1 min-w-0 truncate text-neutral-500">{h.raw_name} · {h.currency}</span>
-                    <span className="w-[40px] shrink-0 text-right text-neutral-400">{balanceStr}</span>
+                    <span className="flex-1 min-w-0 max-w-[130px] truncate text-neutral-500">{h.raw_name} · {h.currency}</span>
+                    <span className="ml-auto w-[40px] shrink-0 text-right text-neutral-400">{balanceStr}</span>
                     <span className="w-[56px] shrink-0 text-right font-medium text-neutral-700">
                       {h.liveEvalKrw != null ? fmtShort(h.liveEvalKrw) : "—"}
                     </span>
@@ -491,7 +491,7 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                   className="flex items-center gap-x-2 px-4 py-2.5 cursor-pointer hover:bg-neutral-50 active:bg-neutral-100 transition-colors"
                 >
                   {/* 종목명 + 당일등락률 */}
-                  <div className="flex min-w-0 flex-1 items-center gap-1">
+                  <div className="flex min-w-0 flex-1 max-w-[130px] items-center gap-1">
                     <span className="truncate text-sm font-medium text-neutral-900">{displayName}</span>
                     {h.livePriceChangePercent != null && (
                       <span className={`shrink-0 text-xs tabular-nums ${changeSign ? "text-red-500" : "text-blue-500"}`}>
@@ -500,7 +500,7 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                     )}
                   </div>
                   {/* 보유수 */}
-                  <span className="w-[40px] shrink-0 text-right text-xs tabular-nums text-neutral-500 whitespace-nowrap">
+                  <span className="ml-auto w-[40px] shrink-0 text-right text-xs tabular-nums text-neutral-500 whitespace-nowrap">
                     {h.quantity.toLocaleString()}주
                   </span>
                   {/* 평가 */}
