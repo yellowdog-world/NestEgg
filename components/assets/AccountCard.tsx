@@ -367,10 +367,11 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
               const changeSign = (h.livePriceChangePercent ?? 0) >= 0;
               const returnSign = (h.liveReturnPct ?? 0) >= 0;
 
-              // 원금(KRW) 계산: USD 종목은 avg_price × qty × usdKrw
+              // 원금(KRW) 계산: 명시적으로 USD 시장인 경우만 환산 (null 시장은 KRW로 처리)
+              const isUsdMarket = h.market !== null && h.market !== "KRX";
               const costKrw =
                 h.avg_price !== null
-                  ? h.market !== "KRX"
+                  ? isUsdMarket
                     ? h.avg_price * h.quantity * usdKrw
                     : h.avg_price * h.quantity
                   : null;
@@ -389,27 +390,27 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                   <div className="flex min-w-0 flex-1 items-center gap-1">
                     <span className="truncate text-sm font-medium text-neutral-900">{displayName}</span>
                     {h.livePriceChangePercent != null && (
-                      <span className={`shrink-0 text-[11px] tabular-nums ${changeSign ? "text-red-500" : "text-blue-500"}`}>
+                      <span className={`shrink-0 text-xs tabular-nums ${changeSign ? "text-red-500" : "text-blue-500"}`}>
                         {changeSign ? "▲" : "▼"}{Math.abs(h.livePriceChangePercent).toFixed(2)}%
                       </span>
                     )}
                   </div>
 
-                  {/* 수량·원금·평가·수익금·수익율 */}
-                  <div className="flex shrink-0 items-center gap-1 text-[11px] tabular-nums">
+                  {/* 수량·원금·평가금·수익금·수익율 */}
+                  <div className="flex shrink-0 items-center gap-1 text-xs tabular-nums">
                     <span className="text-neutral-400">{h.quantity.toLocaleString()}주</span>
 
                     {costKrw !== null && (
                       <>
                         <span className="text-neutral-200">·</span>
-                        <span className="text-neutral-400">원{fmtShort(costKrw)}</span>
+                        <span className="text-neutral-400">원금{fmtShort(costKrw)}</span>
                       </>
                     )}
 
                     {h.liveEvalKrw !== null && (
                       <>
                         <span className="text-neutral-200">·</span>
-                        <span className="font-medium text-neutral-700">평{fmtShort(h.liveEvalKrw)}</span>
+                        <span className="font-medium text-neutral-700">평가{fmtShort(h.liveEvalKrw)}</span>
                       </>
                     )}
 
