@@ -1019,39 +1019,6 @@ function KpiCard({
   );
 }
 
-function PortfolioBar({
-  categories,
-}: {
-  categories: { label: string; value: number; color: string; textColor: string }[];
-}) {
-  const total = categories.reduce((s, c) => s + c.value, 0);
-  if (total === 0) return null;
-  const visible = categories.filter((c) => c.value > 0);
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex h-8 overflow-hidden rounded-full">
-        {visible.map((c) => (
-          <div
-            key={c.label}
-            className={`${c.color} transition-all`}
-            style={{ width: `${(c.value / total) * 100}%` }}
-            title={`${c.label}: ${fmtKRWShort(c.value)}`}
-          />
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
-        {visible.map((c) => (
-          <div key={c.label} className="flex items-center gap-1.5 text-sm text-neutral-600">
-            <span className={`inline-block h-2.5 w-2.5 rounded-full ${c.color}`} />
-            {c.label} ({((c.value / total) * 100).toFixed(0)}%)
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function CashflowSection({
   title,
   color,
@@ -1315,6 +1282,10 @@ function generateGuide(
   monthlyDivKrw: number,
   totalInflow: number,
   totalNetAssets: number,
+  pensionLocked: boolean,
+  lockedPensionKrw: number,
+  needsNationalTransition: boolean,
+  monthlyNational: number,
 ) {
   const tips: { type: "warning" | "success" | "info"; title: string; desc: string }[] = [];
 
@@ -1333,6 +1304,22 @@ function generateGuide(
       type: "success",
       title: `${profile.targetAge}세까지 자산 유지 가능!`,
       desc: `예상 생존 기간 ${fmtSurvival(survivalYears)}으로 목표를 달성합니다. 잉여 현금흐름을 재투자해 여유를 더 늘릴 수 있습니다.`,
+    });
+  }
+
+  if (pensionLocked && lockedPensionKrw > 0) {
+    tips.push({
+      type: "info",
+      title: `연금저축·IRP ${fmtKRWShort(lockedPensionKrw)}은 55세부터 인출 가능`,
+      desc: `은퇴(${profile.retirementAge}세)→55세 구간은 비연금 자산(현금·주식)만 사용하고, 55세부터 연금 자산을 합산했습니다. 55세 이전 중도 해지 시 기타소득세 16.5%가 부과되므로 반드시 유지하세요.`,
+    });
+  }
+
+  if (needsNationalTransition && monthlyNational > 0) {
+    tips.push({
+      type: "info",
+      title: `국민연금은 65세부터 월 ${fmtKRWShort(monthlyNational)} 수령 반영`,
+      desc: `은퇴(${profile.retirementAge}세)→65세 구간은 국민연금 미수령으로 계산했습니다. 이 기간의 소득 공백을 배당·연금 자산으로 채우는 것이 핵심 전략입니다.`,
     });
   }
 
@@ -1839,17 +1826,6 @@ function Dashboard({
   const stockTaxIfETF        = Math.round(stockGainEstimate * 0.154);                     // 국내상장 해외ETF: 15.4%
   const stockTaxIfForeignNet = Math.round(Math.max(0, stockGainEstimate - 2_500_000) * 0.22); // 해외주식: 22%, 250만 공제
 
-  // ── 포트폴리오 분류 ──────────────────────────────────────────────────────────
-  const otherKrw = Math.max(
-    0,
-    portfolioData.totalKrw - portfolioData.pensionKrw - portfolioData.stocksKrw - portfolioData.cashKrw,
-  );
-  const categories = [
-    { label: "주식/ETF", value: portfolioData.stocksKrw + otherKrw, color: "bg-blue-500", textColor: "text-blue-500" },
-    { label: "연금/IRP", value: portfolioData.pensionKrw, color: "bg-sky-300", textColor: "text-sky-600" },
-    { label: "현금/기타", value: portfolioData.cashKrw, color: "bg-neutral-300", textColor: "text-neutral-500" },
-  ];
-
   const inflows =
     totalMonthlyInflow > 0
       ? [
@@ -1866,6 +1842,10 @@ function Dashboard({
     monthlyDiv,
     totalMonthlyInflow,
     effectiveAssets,
+    pensionLocked,
+    lockedPensionKrw,
+    needsNationalTransition,
+    monthlyNational,
   );
 
   return (
@@ -1917,34 +1897,6 @@ function Dashboard({
         />
       </div>
 
-      {/* 수령 시기 제약 안내 */}
-      {(pensionLocked || needsNationalTransition) && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-800 flex flex-col gap-1.5">
-          {pensionLocked && (
-            <>
-              <p className="font-medium">
-                연금저축/IRP {fmtKRWShort(lockedPensionKrw)}은 55세부터 인출 가능합니다
-              </p>
-              <p className="text-sm text-amber-600">
-                은퇴({profile.retirementAge}세)→55세 구간은 비연금 자산만 운용, 55세부터 연금 합산하여 계산했습니다.
-              </p>
-            </>
-          )}
-          {needsNationalTransition && (
-            <>
-              {pensionLocked && <hr className="border-amber-200" />}
-              <p className={pensionLocked ? "text-sm text-amber-600" : "font-medium"}>
-                국민연금은 65세부터 수령 시작으로 계산됩니다
-              </p>
-              <p className="text-sm text-amber-600">
-                은퇴({profile.retirementAge}세)→65세 구간은 국민연금 미수령으로 계산,
-                65세부터 월 {fmtKRWShort(monthlyNational)} 수령 반영했습니다.
-              </p>
-            </>
-          )}
-        </div>
-      )}
-
       {/* 슬라이더 패널 */}
       <SliderPanel profile={profile} onChange={onProfileChange} />
 
@@ -1955,16 +1907,6 @@ function Dashboard({
           returnRate={profile.expectedReturn}
           events={chartEvents}
         />
-      )}
-
-      {/* 자산 포트폴리오 비중 */}
-      {effectiveAssets > 0 && (
-        <section className="rounded-xl border border-neutral-200 bg-white p-5">
-          <h2 className="mb-4 text-base font-medium uppercase tracking-wide text-neutral-500">
-            자산 포트폴리오 비중
-          </h2>
-          <PortfolioBar categories={categories} />
-        </section>
       )}
 
       {/* 월별 현금흐름 상세 */}
