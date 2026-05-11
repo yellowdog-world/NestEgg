@@ -21,7 +21,7 @@ export function ResultRow({
             : "text-neutral-900";
   return (
     <div className="flex items-center justify-between border-b border-neutral-100 pb-2 last:border-b-0">
-      <span className="text-sm text-neutral-600">{label}</span>
+      <span className="text-base text-neutral-600">{label}</span>
       <span className={`text-base font-medium ${color}`}>{value}</span>
     </div>
   );
@@ -34,5 +34,5 @@ export function Note({ children, tone = "amber" }: { children: React.ReactNode; 
       : tone === "red"
         ? "bg-red-50 text-red-900"
         : "bg-amber-50 text-amber-900";
-  return <p className={`rounded-md px-3 py-2 text-sm ${cls}`}>{children}</p>;
+  return <p className={`rounded-md px-3 py-2 text-base ${cls}`}>{children}</p>;
 }

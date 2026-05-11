@@ -20,14 +20,14 @@ export default async function WikiIndexPage() {
   return (
     <div className="mx-auto max-w-3xl flex flex-col gap-10">
       <header className="flex flex-col gap-1 pt-2">
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-900">은퇴 정보 위키</h1>
-        <p className="text-sm text-neutral-500">
+        <h1 className="text-3xl font-bold tracking-tight">은퇴 정보 위키</h1>
+        <p className="text-base text-neutral-500">
           연저펀·ISA·IRP, 세금, 건보료, 생활비 — 은퇴 준비의 모든 것.
         </p>
       </header>
 
       {docs.length === 0 ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900">
           아직 위키 문서가 없어요.{" "}
           <code className="font-mono">content/wiki/</code> 에 .mdx 파일을 추가하면 자동으로 색인됩니다.
         </p>
@@ -38,7 +38,7 @@ export default async function WikiIndexPage() {
           return (
             <section key={cat} className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${meta.color}`}>
+                <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm font-semibold ${meta.color}`}>
                   <span>{meta.icon}</span>
                   {meta.label}
                 </span>
@@ -52,7 +52,7 @@ export default async function WikiIndexPage() {
                       className="group flex flex-col gap-1 rounded-xl border border-neutral-200 bg-white px-4 py-3.5 shadow-sm transition-all hover:border-neutral-300 hover:shadow-md"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <span className="text-sm font-semibold text-neutral-900 leading-snug">
+                        <span className="text-base font-semibold text-neutral-900 leading-snug">
                           {doc.title}
                         </span>
                         <span className="mt-0.5 shrink-0 text-neutral-400 transition-colors group-hover:text-neutral-700">
@@ -60,7 +60,7 @@ export default async function WikiIndexPage() {
                         </span>
                       </div>
                       {doc.description && (
-                        <p className="text-xs text-neutral-600 leading-relaxed">
+                        <p className="text-sm text-neutral-600 leading-relaxed">
                           {doc.description}
                         </p>
                       )}

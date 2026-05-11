@@ -111,7 +111,7 @@ function DepletionSimulator() {
               </LineChart>
             </ResponsiveContainer>
           </div>
-          <p className="text-xs text-neutral-500">
+          <p className="text-sm text-neutral-500">
             시작 나이 {input.startAge}세, 시뮬 기간 {input.horizonYears}년
           </p>
         </div>
@@ -124,8 +124,8 @@ export default function DepletionPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">자산 고갈 시점</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h1 className="text-3xl font-bold tracking-tight">자산 고갈 시점</h1>
+        <p className="mt-1 text-base text-neutral-600">
           매년 일정액을 인출했을 때 시작 시점 가치 기준으로 자산이 어떻게 변하는지.
         </p>
       </header>

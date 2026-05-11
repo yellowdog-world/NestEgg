@@ -29,7 +29,7 @@ function CustomTooltip({ active, payload, label }: any) {
   const gainPct = gain != null && cost && cost > 0 ? (gain / cost) * 100 : null;
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-lg text-xs">
+    <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-lg text-sm">
       <p className="mb-1.5 font-medium text-neutral-500">{label}</p>
       {total != null && (
         <p className="flex items-center justify-between gap-4">

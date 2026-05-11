@@ -97,7 +97,7 @@ export function OcrUploader() {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <section>
-        <label className="text-sm font-medium">계좌</label>
+        <label className="text-base font-medium">계좌</label>
         {accounts.length > 0 && !showNewAccount && (
           <select
             value={accountId}
@@ -116,7 +116,7 @@ export function OcrUploader() {
         <button
           type="button"
           onClick={() => setShowNewAccount((v) => !v)}
-          className="mt-2 text-sm text-blue-700 underline"
+          className="mt-2 text-base text-blue-700 underline"
         >
           {showNewAccount ? "취소" : "+ 새 계좌 등록"}
         </button>
@@ -124,7 +124,7 @@ export function OcrUploader() {
 
       {showNewAccount && (
         <div className="rounded-lg border border-neutral-200 bg-white p-4">
-          <h3 className="mb-2 text-sm font-medium">새 계좌</h3>
+          <h3 className="mb-2 text-base font-medium">새 계좌</h3>
           <div className="flex flex-col gap-2">
             <select
               value={newAccount.type}
@@ -152,7 +152,7 @@ export function OcrUploader() {
             <button
               type="button"
               onClick={createAccount}
-              className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white"
+              className="rounded-md bg-neutral-900 px-3 py-1.5 text-base text-white"
             >
               계좌 만들기
             </button>
@@ -161,7 +161,7 @@ export function OcrUploader() {
       )}
 
       <section>
-        <label className="text-sm font-medium">캡처 이미지</label>
+        <label className="text-base font-medium">캡처 이미지</label>
         <input
           ref={fileInputRef}
           type="file"
@@ -181,18 +181,18 @@ export function OcrUploader() {
           {file ? (
             <>
               <span className="text-2xl">🖼️</span>
-              <span className="text-sm font-medium text-neutral-800">{file.name}</span>
-              <span className="text-xs text-neutral-500">
+              <span className="text-base font-medium text-neutral-800">{file.name}</span>
+              <span className="text-sm text-neutral-500">
                 {(file.size / 1024).toFixed(0)} KB · 탭하면 다시 선택
               </span>
             </>
           ) : (
             <>
               <span className="text-3xl">📷</span>
-              <span className="text-sm font-medium text-neutral-700">
+              <span className="text-base font-medium text-neutral-700">
                 탭하여 사진 촬영 또는 파일 선택
               </span>
-              <span className="text-xs text-neutral-400">
+              <span className="text-sm text-neutral-400">
                 증권사 앱 보유 종목 화면을 캡처해 주세요
               </span>
             </>
@@ -213,7 +213,7 @@ export function OcrUploader() {
       </button>
 
       {errorMsg && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{errorMsg}</p>
+        <p className="rounded-md bg-red-50 px-3 py-2 text-base text-red-800">{errorMsg}</p>
       )}
     </form>
   );

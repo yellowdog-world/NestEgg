@@ -4,14 +4,14 @@ export default function UploadPage() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6 pb-10">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">자산 캡처 업로드</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h1 className="text-3xl font-bold tracking-tight">자산 캡처 업로드</h1>
+        <p className="mt-1 text-base text-neutral-600">
           증권사/은행 앱의 보유 종목 화면을 캡처하면 AI가 종목·수량·평단가를 자동 추출합니다.
         </p>
       </header>
 
       {/* 플로우 스텝 */}
-      <div className="flex items-center gap-1 text-xs">
+      <div className="flex items-center gap-1 text-sm">
         {[
           { n: "1", label: "계좌 선택/등록", active: true },
           { n: "2", label: "화면 캡처", active: true },
@@ -33,7 +33,7 @@ export default function UploadPage() {
 
       {/* 캡처 가이드 */}
       <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-900">
+        <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-amber-900">
           <span className="text-base">📋</span> 이렇게 캡처하면 정확해요
         </h2>
 
@@ -47,7 +47,7 @@ export default function UploadPage() {
             { icon: "📈", label: "평가금액" },
             { icon: "📉", label: "수익률 / 손익" },
           ].map(({ icon, label }) => (
-            <div key={label} className="flex items-center gap-1.5 text-xs text-amber-800">
+            <div key={label} className="flex items-center gap-1.5 text-sm text-amber-800">
               <span>{icon}</span>
               <span>{label}</span>
             </div>
@@ -55,25 +55,25 @@ export default function UploadPage() {
         </div>
 
         {/* 예시 화면 목업 */}
-        <p className="mb-2 text-xs font-medium text-amber-800">예시 화면</p>
+        <p className="mb-2 text-sm font-medium text-amber-800">예시 화면</p>
         <div className="overflow-hidden rounded-xl border border-amber-300 bg-white shadow-sm">
           {/* 앱 상단 바 */}
           <div className="flex items-center justify-between border-b border-neutral-100 bg-neutral-50 px-3 py-2">
-            <span className="text-xs font-medium text-neutral-600">보유 종목</span>
-            <span className="text-[10px] text-neutral-400">총 3종목</span>
+            <span className="text-sm font-medium text-neutral-600">보유 종목</span>
+            <span className="text-xs text-neutral-400">총 3종목</span>
           </div>
 
           {/* 종목 행 */}
           <div className="divide-y divide-neutral-100">
             {/* 헤더 행 */}
-            <div className="grid grid-cols-4 px-3 py-1.5 text-[9px] font-medium text-neutral-400">
+            <div className="grid grid-cols-4 px-3 py-1.5 text-xs font-medium text-neutral-400">
               <span className="col-span-2">종목명</span>
               <span className="text-right">평단가</span>
               <span className="text-right">평가금액</span>
             </div>
 
             {/* 종목 1 — 하이라이트 */}
-            <div className="relative grid grid-cols-4 bg-amber-50/60 px-3 py-2 text-[10px]">
+            <div className="relative grid grid-cols-4 bg-amber-50/60 px-3 py-2 text-xs">
               {/* 하이라이트 레이블들 */}
               <div className="absolute -left-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-amber-400 bg-white" />
               <div className="col-span-2">
@@ -95,7 +95,7 @@ export default function UploadPage() {
             </div>
 
             {/* 종목 2 */}
-            <div className="grid grid-cols-4 px-3 py-2 text-[10px]">
+            <div className="grid grid-cols-4 px-3 py-2 text-xs">
               <div className="col-span-2">
                 <div className="font-semibold text-neutral-800">KODEX 배당성장</div>
                 <div className="text-neutral-500">
@@ -113,7 +113,7 @@ export default function UploadPage() {
             </div>
 
             {/* 종목 3 */}
-            <div className="grid grid-cols-4 px-3 py-2 text-[10px]">
+            <div className="grid grid-cols-4 px-3 py-2 text-xs">
               <div className="col-span-2">
                 <div className="font-semibold text-neutral-800">SCHD</div>
                 <div className="text-neutral-500">
@@ -134,14 +134,14 @@ export default function UploadPage() {
 
         {/* 주의사항 */}
         <div className="mt-3 space-y-1">
-          <p className="text-[11px] font-medium text-amber-800">이런 경우 인식률이 낮아요</p>
+          <p className="text-sm font-medium text-amber-800">이런 경우 인식률이 낮아요</p>
           <div className="grid grid-cols-1 gap-1">
             {[
               "❌ 화면이 잘리거나 흐린 경우",
               "❌ 종목명·수량만 있고 평단가가 없는 경우",
               "❌ 원화 환산 금액만 있고 달러 가격이 없는 경우",
             ].map((msg) => (
-              <p key={msg} className="text-[11px] text-amber-700">{msg}</p>
+              <p key={msg} className="text-sm text-amber-700">{msg}</p>
             ))}
           </div>
         </div>
@@ -149,7 +149,7 @@ export default function UploadPage() {
 
       <OcrUploader />
 
-      <p className="text-xs text-neutral-500">
+      <p className="text-sm text-neutral-500">
         🔒 이미지는 Supabase Storage에 본인 계정에만 저장되며 AI(Anthropic)에 단발성으로 전송됩니다.
       </p>
     </div>

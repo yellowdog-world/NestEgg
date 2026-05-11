@@ -54,11 +54,11 @@ export function LoginForm() {
   if (step === "code") {
     return (
       <>
-        <p className="mt-6 text-sm text-neutral-700">
+        <p className="mt-6 text-base text-neutral-700">
           <span className="font-medium">{email}</span>로 인증 코드를 보냈습니다.
         </p>
         <form onSubmit={verifyCode} className="mt-3 flex flex-col gap-3">
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex flex-col gap-1 text-base">
             인증 코드
             <input
               type="text"
@@ -76,20 +76,20 @@ export function LoginForm() {
           <button
             type="submit"
             disabled={status === "verifying" || code.length < 6}
-            className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-md bg-neutral-900 px-4 py-2 text-base font-medium text-white disabled:opacity-50"
           >
             {status === "verifying" ? "확인 중…" : "로그인"}
           </button>
           <button
             type="button"
             onClick={() => { setStep("email"); setCode(""); setStatus("idle"); setErrorMsg(null); }}
-            className="text-sm text-neutral-600 underline"
+            className="text-base text-neutral-600 underline"
           >
             이메일 다시 입력
           </button>
         </form>
         {status === "error" && (
-          <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{errorMsg}</p>
+          <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-base text-red-800">{errorMsg}</p>
         )}
       </>
     );
@@ -98,7 +98,7 @@ export function LoginForm() {
   return (
     <>
       <form onSubmit={sendCode} className="mt-8 flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-base">
           이메일
           <input
             type="email"
@@ -112,13 +112,13 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={status === "sending"}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="rounded-md bg-neutral-900 px-4 py-2 text-base font-medium text-white disabled:opacity-50"
         >
           {status === "sending" ? "전송 중…" : "인증 코드 받기"}
         </button>
       </form>
       {status === "error" && (
-        <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">오류: {errorMsg}</p>
+        <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-base text-red-800">오류: {errorMsg}</p>
       )}
     </>
   );

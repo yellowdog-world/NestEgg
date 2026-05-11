@@ -16,7 +16,7 @@ export default async function RetirementPage() {
 
   if (!user) {
     return (
-      <p className="text-sm text-neutral-600">
+      <p className="text-base text-neutral-600">
         <Link className="text-blue-700 underline" href="/login">
           로그인
         </Link>

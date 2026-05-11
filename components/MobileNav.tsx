@@ -32,7 +32,7 @@ export function MobileNav() {
             <Link
               key={href}
               href={href}
-              className={`flex flex-col items-center gap-0.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              className={`flex flex-col items-center gap-0.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${
                 active
                   ? "text-amber-600"
                   : "text-neutral-400 hover:text-neutral-700"

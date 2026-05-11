@@ -6,10 +6,10 @@ import { cn } from "@/lib/utils/cn";
 // ── 공통 스타일 ──────────────────────────────────────────────────────────────
 const inputCls =
   "w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 outline-none focus:border-neutral-900";
-const labelCls = "flex flex-col gap-1 text-sm";
+const labelCls = "flex flex-col gap-1 text-base";
 const labelTitleCls = "font-medium text-neutral-700";
-const hintCls = "text-xs text-neutral-600";
-const unitCls = "shrink-0 text-xs text-neutral-600 whitespace-nowrap";
+const hintCls = "text-sm text-neutral-600";
+const unitCls = "shrink-0 text-sm text-neutral-600 whitespace-nowrap";
 
 // ── 기본 숫자 필드 ───────────────────────────────────────────────────────────
 type Props = {
@@ -273,7 +273,7 @@ export function ToggleField({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex items-center gap-2 text-sm">
+    <label className="flex items-center gap-2 text-base">
       <input
         type="checkbox"
         checked={value}

@@ -75,9 +75,9 @@ function RetireCashflowSimulator() {
             accent="green"
           />
           <div className="mt-2 rounded-lg bg-neutral-50 p-3">
-            <h3 className="mb-2 text-sm font-medium">내역</h3>
-            <table className="w-full text-sm">
-              <thead className="text-xs text-neutral-500">
+            <h3 className="mb-2 text-base font-medium">내역</h3>
+            <table className="w-full text-base">
+              <thead className="text-sm text-neutral-500">
                 <tr>
                   <th className="text-left">소스</th>
                   <th className="text-right">명목</th>
@@ -107,8 +107,8 @@ export default function RetireCashflowPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">은퇴 후 월급 플랜</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h1 className="text-3xl font-bold tracking-tight">은퇴 후 월급 플랜</h1>
+        <p className="mt-1 text-base text-neutral-600">
           연저펀/IRP, 국민연금, 배당, 임대를 합쳐 월·연 순수령액을 계산.
         </p>
       </header>

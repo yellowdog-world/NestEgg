@@ -36,7 +36,7 @@ export default async function Home({
   return (
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">은퇴 자산 관리</h1>
+        <h1 className="text-3xl font-bold tracking-tight">은퇴 자산 관리</h1>
         <p className="text-neutral-600">
           세금은 낮추고, 현금 흐름은 끝까지. 정보 → 시뮬레이터 → 내 자산 적용까지.
         </p>
@@ -52,7 +52,7 @@ export default async function Home({
             <Icon className="h-6 w-6 text-amber-500" />
             <div className="flex flex-col gap-1">
               <h2 className="text-lg font-medium group-hover:underline">{title}</h2>
-              <p className="text-sm text-neutral-600">{desc}</p>
+              <p className="text-base text-neutral-600">{desc}</p>
             </div>
           </Link>
         ))}

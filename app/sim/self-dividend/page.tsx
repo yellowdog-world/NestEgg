@@ -10,8 +10,8 @@ export default function SelfDividendPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">자가배당 vs 배당주</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h1 className="text-3xl font-bold tracking-tight">자가배당 vs 배당주</h1>
+        <p className="mt-1 text-base text-neutral-600">
           동일 수령액 기준 법인 자가배당과 배당주 직접 보유의 총 세부담 비교.
         </p>
       </header>
@@ -60,18 +60,18 @@ export default function SelfDividendPage() {
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{s.label}</span>
                 </div>
-                <p className="mt-1 text-xs text-neutral-600">{s.detail}</p>
-                <div className="mt-2 grid grid-cols-3 gap-1 text-sm">
+                <p className="mt-1 text-sm text-neutral-600">{s.detail}</p>
+                <div className="mt-2 grid grid-cols-3 gap-1 text-base">
                   <div>
-                    <div className="text-xs text-neutral-500">총 비용</div>
+                    <div className="text-sm text-neutral-500">총 비용</div>
                     <div>{fmtKRW(Math.round(s.grossNeeded))}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-neutral-500">총 세금</div>
+                    <div className="text-sm text-neutral-500">총 세금</div>
                     <div className="text-red-700">{fmtKRW(Math.round(s.totalTax))}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-neutral-500">실수령</div>
+                    <div className="text-sm text-neutral-500">실수령</div>
                     <div className="text-emerald-700">{fmtKRW(Math.round(s.netReceived))}</div>
                   </div>
                 </div>

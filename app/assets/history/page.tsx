@@ -17,15 +17,15 @@ export default async function HistoryPage() {
   return (
     <div className="flex flex-col gap-4">
       <header>
-        <Link href="/assets" className="text-sm text-neutral-600 hover:text-neutral-900">
+        <Link href="/assets" className="text-base text-neutral-600 hover:text-neutral-900">
           ← 자산
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">스냅샷 히스토리</h1>
+        <h1 className="mt-1 text-3xl font-bold tracking-tight">스냅샷 히스토리</h1>
       </header>
 
       <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-xs text-neutral-500">
+        <table className="w-full text-base">
+          <thead className="bg-neutral-50 text-sm text-neutral-500">
             <tr>
               <th className="px-3 py-2 text-left">날짜</th>
               <th className="px-3 py-2 text-left">계좌</th>
@@ -58,7 +58,7 @@ export default async function HistoryPage() {
                   <td className="px-3 py-2">
                     <Link
                       href={`/assets/confirm/${s.id}`}
-                      className="text-xs text-blue-700 hover:underline"
+                      className="text-sm text-blue-700 hover:underline"
                     >
                       열기
                     </Link>
@@ -68,7 +68,7 @@ export default async function HistoryPage() {
             })}
             {(!snapshots || snapshots.length === 0) && (
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-sm text-neutral-500">
+                <td colSpan={5} className="px-3 py-6 text-center text-base text-neutral-500">
                   히스토리가 없어요.
                 </td>
               </tr>
@@ -86,5 +86,5 @@ function StatusBadge({ status }: { status: string }) {
       ? "bg-emerald-100 text-emerald-800"
       : "bg-amber-100 text-amber-800";
   const label = status === "confirmed" ? "확인됨" : "초안";
-  return <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
+  return <span className={`rounded px-1.5 py-0.5 text-sm font-medium ${cls}`}>{label}</span>;
 }

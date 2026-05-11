@@ -16,8 +16,8 @@ const ACCOUNT_LABEL: Record<string, string> = {
 };
 
 const inputCls =
-  "w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-neutral-900";
-const labelCls = "flex flex-col gap-1 text-sm";
+  "w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-base outline-none focus:border-neutral-900";
+const labelCls = "flex flex-col gap-1 text-base";
 const labelTitleCls = "font-medium text-neutral-700";
 
 export function DividendAddForm({
@@ -231,7 +231,7 @@ export function DividendAddForm({
             className={inputCls}
           />
           {amountKrw !== null && (
-            <span className="text-xs text-neutral-500">
+            <span className="text-sm text-neutral-500">
               ≈ {Math.round(amountKrw).toLocaleString("ko-KR")}원
             </span>
           )}
@@ -252,12 +252,12 @@ export function DividendAddForm({
         </select>
       </label>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-base text-red-500">{error}</p>}
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-lg bg-neutral-900 py-3 text-sm font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-lg bg-neutral-900 py-3 text-base font-semibold text-white disabled:opacity-50"
       >
         {loading ? "저장 중…" : "배당 저장"}
       </button>

@@ -10,8 +10,8 @@ export default function Limit1500Page() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">1500만원 한도</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h1 className="text-3xl font-bold tracking-tight">1500만원 한도</h1>
+        <p className="mt-1 text-base text-neutral-600">
           연 1500만원 초과 시 16.5% 분리과세 vs 종합과세 중 어느 쪽이 유리한지 자동 비교.
         </p>
       </header>

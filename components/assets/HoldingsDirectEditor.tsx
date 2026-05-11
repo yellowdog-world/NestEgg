@@ -122,8 +122,8 @@ export function HoldingsDirectEditor({ accountId, initial }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
-        <table className="w-full min-w-[600px] text-sm">
-          <thead className="bg-neutral-50 text-xs text-neutral-500">
+        <table className="w-full min-w-[600px] text-base">
+          <thead className="bg-neutral-50 text-sm text-neutral-500">
             <tr>
               <th className="px-3 py-2 text-left">종목명</th>
               <th className="px-2 py-2 text-left">티커</th>
@@ -146,7 +146,7 @@ export function HoldingsDirectEditor({ accountId, initial }: Props) {
                     value={r.raw_name}
                     onChange={(e) => update(i, { raw_name: e.target.value })}
                     placeholder={resolving.has(i) ? "조회 중…" : "종목명"}
-                    className={`w-full rounded border px-2 py-1 text-sm transition-colors ${
+                    className={`w-full rounded border px-2 py-1 text-base transition-colors ${
                       resolving.has(i)
                         ? "border-blue-200 bg-blue-50 text-neutral-400"
                         : "border-neutral-200 bg-white"
@@ -155,18 +155,18 @@ export function HoldingsDirectEditor({ accountId, initial }: Props) {
                 </td>
                 {isCash ? (
                   <>
-                    <td className="px-2 py-2 text-center text-xs text-neutral-300">—</td>
+                    <td className="px-2 py-2 text-center text-sm text-neutral-300">—</td>
                     <td className="px-2 py-2">
                       <select
                         value={r.currency}
                         onChange={(e) => update(i, { currency: e.target.value as "KRW" | "USD" })}
-                        className="rounded border border-neutral-200 bg-white px-2 py-1 text-xs"
+                        className="rounded border border-neutral-200 bg-white px-2 py-1 text-sm"
                       >
                         <option value="KRW">KRW</option>
                         <option value="USD">USD</option>
                       </select>
                     </td>
-                    <td className="px-2 py-2 text-right text-xs text-neutral-400">잔액</td>
+                    <td className="px-2 py-2 text-right text-sm text-neutral-400">잔액</td>
                     <td className="px-2 py-2">
                       <input
                         type="number"
@@ -175,7 +175,7 @@ export function HoldingsDirectEditor({ accountId, initial }: Props) {
                           update(i, { avg_price: e.target.value === "" ? null : Number(e.target.value) })
                         }
                         placeholder="금액 입력"
-                        className="w-36 rounded border border-neutral-200 bg-white px-2 py-1 text-right text-sm"
+                        className="w-36 rounded border border-neutral-200 bg-white px-2 py-1 text-right text-base"
                       />
                     </td>
                   </>
@@ -188,10 +188,10 @@ export function HoldingsDirectEditor({ accountId, initial }: Props) {
                           onChange={(e) => update(i, { ticker: e.target.value.toUpperCase() })}
                           onBlur={(e) => onTickerBlur(i, e.target.value)}
                           placeholder="QQQ"
-                          className="w-20 rounded border border-neutral-200 bg-white px-2 py-1 font-mono text-xs"
+                          className="w-20 rounded border border-neutral-200 bg-white px-2 py-1 font-mono text-sm"
                         />
                         {resolving.has(i) && (
-                          <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400">…</span>
+                          <span className="absolute right-1 top-1/2 -translate-y-1/2 text-xs text-neutral-400">…</span>
                         )}
                       </div>
                     </td>
@@ -199,7 +199,7 @@ export function HoldingsDirectEditor({ accountId, initial }: Props) {
                       <select
                         value={r.currency}
                         onChange={(e) => update(i, { currency: e.target.value as "KRW" | "USD" })}
-                        className="rounded border border-neutral-200 bg-white px-2 py-1 text-xs"
+                        className="rounded border border-neutral-200 bg-white px-2 py-1 text-sm"
                       >
                         <option value="KRW">KRW</option>
                         <option value="USD">USD</option>
@@ -211,7 +211,7 @@ export function HoldingsDirectEditor({ accountId, initial }: Props) {
                         value={r.quantity}
                         step="0.000001"
                         onChange={(e) => update(i, { quantity: Number(e.target.value) })}
-                        className="w-24 rounded border border-neutral-200 bg-white px-2 py-1 text-right text-sm"
+                        className="w-24 rounded border border-neutral-200 bg-white px-2 py-1 text-right text-base"
                       />
                     </td>
                     <td className="px-2 py-2">
@@ -222,7 +222,7 @@ export function HoldingsDirectEditor({ accountId, initial }: Props) {
                           update(i, { avg_price: e.target.value === "" ? null : Number(e.target.value) })
                         }
                         placeholder="—"
-                        className="w-28 rounded border border-neutral-200 bg-white px-2 py-1 text-right text-sm"
+                        className="w-28 rounded border border-neutral-200 bg-white px-2 py-1 text-right text-base"
                       />
                     </td>
                   </>
@@ -230,7 +230,7 @@ export function HoldingsDirectEditor({ accountId, initial }: Props) {
                 <td className="px-2 py-2">
                   <button
                     onClick={() => update(i, { _delete: !r._delete })}
-                    className="text-xs text-red-500 hover:underline"
+                    className="text-sm text-red-500 hover:underline"
                   >
                     {r._delete ? "복원" : "삭제"}
                   </button>
@@ -246,21 +246,21 @@ export function HoldingsDirectEditor({ accountId, initial }: Props) {
         <button
           type="button"
           onClick={add}
-          className="text-sm text-blue-700 underline"
+          className="text-base text-blue-700 underline"
         >
           + 종목 추가
         </button>
         <button
           type="button"
           onClick={() => addCash("KRW")}
-          className="text-sm text-neutral-500 underline"
+          className="text-base text-neutral-500 underline"
         >
           + 예수금(원화)
         </button>
         <button
           type="button"
           onClick={() => addCash("USD")}
-          className="text-sm text-neutral-500 underline"
+          className="text-base text-neutral-500 underline"
         >
           + 예수금(달러)
         </button>
@@ -270,20 +270,20 @@ export function HoldingsDirectEditor({ accountId, initial }: Props) {
         <button
           onClick={save}
           disabled={saving}
-          className="rounded-md bg-neutral-900 px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="rounded-md bg-neutral-900 px-5 py-2 text-base font-medium text-white disabled:opacity-50"
         >
           {saving ? "저장 중…" : "저장"}
         </button>
         <button
           onClick={() => router.back()}
-          className="rounded-md border border-neutral-300 px-4 py-2 text-sm"
+          className="rounded-md border border-neutral-300 px-4 py-2 text-base"
         >
           취소
         </button>
       </div>
 
       {errorMsg && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{errorMsg}</p>
+        <p className="rounded-md bg-red-50 px-3 py-2 text-base text-red-800">{errorMsg}</p>
       )}
     </div>
   );

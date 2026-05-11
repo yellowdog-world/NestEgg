@@ -10,8 +10,8 @@ export default function CorpSalaryPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">법인 연봉 최적화</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h1 className="text-3xl font-bold tracking-tight">법인 연봉 최적화</h1>
+        <p className="mt-1 text-base text-neutral-600">
           ① 4대보험 최소 / ② 종합세 최저 / ③ 균형 — 3개 시나리오 비교 (단순화 모델).
         </p>
       </header>
@@ -50,12 +50,12 @@ export default function CorpSalaryPage() {
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{s.name}</span>
-                  <span className="text-xs text-neutral-500">
+                  <span className="text-sm text-neutral-500">
                     연봉 {fmtKRWShort(s.yearlySalary)}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-neutral-600">{s.description}</p>
-                <div className="mt-2 grid grid-cols-2 gap-1 text-sm">
+                <p className="mt-1 text-sm text-neutral-600">{s.description}</p>
+                <div className="mt-2 grid grid-cols-2 gap-1 text-base">
                   <div>
                     <span className="text-neutral-500">4대보험: </span>
                     {fmtKRW(Math.round(s.fourMajorInsurance))}

@@ -10,8 +10,8 @@ export default function EtfTaxPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">해외 ETF 세금 비교</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h1 className="text-3xl font-bold tracking-tight">해외 ETF 세금 비교</h1>
+        <p className="mt-1 text-base text-neutral-600">
           동일한 평가차익을 일반계좌 / ISA / 연저펀에 담을 때 실효세를 비교.
         </p>
       </header>
@@ -50,10 +50,10 @@ export default function EtfTaxPage() {
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{line.label}</span>
-                  <span className="text-sm text-neutral-500">{fmtPct(line.effectiveRate)}</span>
+                  <span className="text-base text-neutral-500">{fmtPct(line.effectiveRate)}</span>
                 </div>
                 <div className="mt-1 text-lg font-semibold">{fmtKRW(line.taxAmount)}</div>
-                <div className="mt-1 text-xs text-neutral-600">{line.detail}</div>
+                <div className="mt-1 text-sm text-neutral-600">{line.detail}</div>
               </div>
             ))}
             <ResultRow label="최저 세금 계좌" value={out.best.label} accent="green" />

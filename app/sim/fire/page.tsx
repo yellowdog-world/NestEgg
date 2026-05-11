@@ -90,8 +90,8 @@ export default function FirePage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">FIRE 계산기</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h1 className="text-3xl font-bold tracking-tight">FIRE 계산기</h1>
+        <p className="mt-1 text-base text-neutral-600">
           연 지출과 안전인출률(SWR)로 은퇴에 필요한 자산 규모를 계산. 4% 룰 = 연 지출의 25배.
         </p>
       </header>

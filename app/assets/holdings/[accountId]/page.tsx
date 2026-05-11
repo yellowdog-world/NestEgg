@@ -48,11 +48,11 @@ export default async function HoldingsEditPage({
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <Link href="/assets" className="text-sm text-neutral-600 hover:text-neutral-900">
+        <Link href="/assets" className="text-base text-neutral-600 hover:text-neutral-900">
           ← 자산
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">종목 편집</h1>
-        <p className="mt-1 text-sm text-neutral-500">{acctLabel}</p>
+        <h1 className="mt-1 text-3xl font-bold tracking-tight">종목 편집</h1>
+        <p className="mt-1 text-base text-neutral-500">{acctLabel}</p>
       </header>
 
       <HoldingsDirectEditor accountId={accountId} initial={initial} />

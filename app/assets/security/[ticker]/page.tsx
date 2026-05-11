@@ -122,36 +122,36 @@ export default async function SecurityDetailPage({
       <div className="rounded-2xl bg-neutral-900 px-5 py-5 text-white mb-4">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-sm text-neutral-400 mb-1">총 평가금액</p>
+            <p className="text-base text-neutral-400 mb-1">총 평가금액</p>
             <p className="text-3xl font-bold tabular-nums leading-tight">
               {totalEvalOrig != null
                 ? (isUsd ? fmtUSD(totalEvalOrig) : fmtKRW(totalEvalOrig))
                 : "—"}
             </p>
             {isUsd && totalEvalKrw != null && (
-              <p className="mt-0.5 text-sm text-neutral-400 tabular-nums">
+              <p className="mt-0.5 text-base text-neutral-400 tabular-nums">
                 {fmtKRWShort(totalEvalKrw)}
               </p>
             )}
           </div>
-          <span className="rounded-lg bg-neutral-700 px-3 py-1 text-sm font-medium text-neutral-300">
+          <span className="rounded-lg bg-neutral-700 px-3 py-1 text-base font-medium text-neutral-300">
             {isUsd ? "USD" : "KRW"}
           </span>
         </div>
-        <p className="mt-2 text-sm text-neutral-400 tabular-nums">
+        <p className="mt-2 text-base text-neutral-400 tabular-nums">
           원금 {isUsd ? fmtUSD(totalCostOrig) : fmtKRWShort(totalCostKrw)}
         </p>
 
         {/* 보유량 / 평단가 */}
         <div className="mt-4 grid grid-cols-2 gap-4 border-t border-neutral-700 pt-4">
           <div>
-            <p className="text-sm text-neutral-400">보유량</p>
+            <p className="text-base text-neutral-400">보유량</p>
             <p className="mt-0.5 text-xl font-bold tabular-nums">
               {fmtNum(totalQty)}주
             </p>
           </div>
           <div>
-            <p className="text-sm text-neutral-400">평단가</p>
+            <p className="text-base text-neutral-400">평단가</p>
             <p className="mt-0.5 text-xl font-bold tabular-nums">
               {weightedAvgOrig != null
                 ? (isUsd
@@ -167,7 +167,7 @@ export default async function SecurityDetailPage({
       <div className="grid grid-cols-2 gap-3 mb-4">
         {/* 총 수익 */}
         <div className="rounded-xl border border-neutral-200 bg-white px-4 py-4">
-          <p className="text-sm text-neutral-500">총 수익</p>
+          <p className="text-base text-neutral-500">총 수익</p>
           {gainKrw != null ? (
             <>
               <p className={`mt-1 text-xl font-bold tabular-nums leading-tight ${pos ? "text-red-500" : "text-blue-500"}`}>
@@ -188,7 +188,7 @@ export default async function SecurityDetailPage({
 
         {/* 일간 수익 */}
         <div className="rounded-xl border border-neutral-200 bg-white px-4 py-4">
-          <p className="text-sm text-neutral-500">일간 수익</p>
+          <p className="text-base text-neutral-500">일간 수익</p>
           {dailyGainOrig != null ? (
             <>
               <p className={`mt-1 text-xl font-bold tabular-nums leading-tight ${dailyPos ? "text-red-500" : "text-blue-500"}`}>
@@ -236,13 +236,13 @@ export default async function SecurityDetailPage({
               <div key={h.id} className="flex items-center justify-between gap-3 px-4 py-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${TYPE_COLOR[acctType] ?? "bg-neutral-100 text-neutral-600"}`}>
+                    <span className={`rounded-full px-2.5 py-0.5 text-sm font-medium ${TYPE_COLOR[acctType] ?? "bg-neutral-100 text-neutral-600"}`}>
                       {ACCOUNT_LABEL[acctType] ?? acctType}
                     </span>
                     <span className="text-base font-medium text-neutral-800">{broker}</span>
-                    {nickname && <span className="text-sm text-neutral-500">{nickname}</span>}
+                    {nickname && <span className="text-base text-neutral-500">{nickname}</span>}
                   </div>
-                  <p className="mt-1 text-sm text-neutral-500 tabular-nums">
+                  <p className="mt-1 text-base text-neutral-500 tabular-nums">
                     {fmtNum(qty)}주
                     {avgP != null && (
                       <span className="ml-2">
@@ -260,7 +260,7 @@ export default async function SecurityDetailPage({
                       : "—"}
                   </p>
                   {acctGainPct != null && (
-                    <p className={`text-sm font-semibold tabular-nums ${acctPos ? "text-red-500" : "text-blue-500"}`}>
+                    <p className={`text-base font-semibold tabular-nums ${acctPos ? "text-red-500" : "text-blue-500"}`}>
                       {acctGain != null && (isUsd
                         ? (acctPos ? "+" : "") + fmtUSD(acctGain / usdKrw)
                         : (acctPos ? "+" : "") + fmtKRWShort(acctGain)

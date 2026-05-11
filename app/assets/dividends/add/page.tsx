@@ -14,7 +14,7 @@ export default async function DividendAddPage() {
 
   if (!user) {
     return (
-      <p className="text-sm text-neutral-600">
+      <p className="text-base text-neutral-600">
         <Link className="text-blue-700 underline" href="/login">로그인</Link>이 필요합니다.
       </p>
     );
@@ -33,11 +33,11 @@ export default async function DividendAddPage() {
       <header className="flex items-center gap-3">
         <Link
           href="/assets"
-          className="text-sm text-neutral-500 hover:text-neutral-800"
+          className="text-base text-neutral-500 hover:text-neutral-800"
         >
           ← 내 자산
         </Link>
-        <h1 className="text-lg font-semibold tracking-tight">배당 입력</h1>
+        <h1 className="text-3xl font-bold tracking-tight">배당 입력</h1>
       </header>
 
       <DividendAddForm accounts={accounts ?? []} defaultUsdKrw={usdKrw} />

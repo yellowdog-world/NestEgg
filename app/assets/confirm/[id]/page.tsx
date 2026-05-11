@@ -134,13 +134,13 @@ export default async function ConfirmSnapshotPage({
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <Link href="/assets" className="text-sm text-neutral-600 hover:text-neutral-900">
+        <Link href="/assets" className="text-base text-neutral-600 hover:text-neutral-900">
           ← 자산
         </Link>
         <div className="mt-1 flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">OCR 결과 확인</h1>
-            <p className="mt-1 text-sm text-neutral-600">
+            <h1 className="text-3xl font-bold tracking-tight">OCR 결과 확인</h1>
+            <p className="mt-1 text-base text-neutral-600">
               종목명·티커·수량·평단가를 확인하고 [확인 완료]를 누르세요.
             </p>
           </div>
@@ -153,7 +153,7 @@ export default async function ConfirmSnapshotPage({
         </div>
       </header>
 
-      <section className="flex flex-wrap gap-3 rounded-lg bg-neutral-100 p-3 text-sm">
+      <section className="flex flex-wrap gap-3 rounded-lg bg-neutral-100 p-3 text-base">
         <span>
           <strong>계좌:</strong>{" "}
           {snapshot.accounts?.broker ?? "—"}{" "}
@@ -170,14 +170,14 @@ export default async function ConfirmSnapshotPage({
 
       {/* 자동 교정 여부 — 한 줄 compact 표시 */}
       {ocrNote && (
-        <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
           ✦ AI가 일부 값을 자동 교정했습니다. 주황색 셀은 직접 확인해 주세요.
         </p>
       )}
 
       {/* 기존 종목 포함 안내 */}
       {existingCount > 0 && (
-        <p className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-800">
+        <p className="rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800">
           이 계좌에 이미 등록된 종목 <strong>{existingCount}개</strong>가 아래 목록 하단에 포함되어 있습니다.
           확인 완료 시 OCR 신규 종목과 함께 저장됩니다. 필요 없는 항목은 × 로 삭제하세요.
         </p>
@@ -197,5 +197,5 @@ function ConfidenceBadge({ level }: { level?: "high" | "medium" | "low" }) {
         ? "bg-amber-100 text-amber-800"
         : "bg-red-100 text-red-800";
   const label = level === "high" ? "높음" : level === "medium" ? "보통" : "낮음";
-  return <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
+  return <span className={`rounded px-1.5 py-0.5 text-sm font-medium ${cls}`}>{label}</span>;
 }

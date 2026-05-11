@@ -23,7 +23,7 @@ function Callout({
 
 export const wikiMdxComponents: MDXComponents = {
   h1: ({ children }) => (
-    <h1 className="mt-8 mb-3 text-3xl font-semibold tracking-tight">{children}</h1>
+    <h1 className="mt-8 mb-3 text-3xl font-bold tracking-tight">{children}</h1>
   ),
   h2: ({ children }) => (
     <h2 className="mt-8 mb-3 text-xl font-semibold tracking-tight">{children}</h2>
@@ -50,18 +50,18 @@ export const wikiMdxComponents: MDXComponents = {
     className ? (
       <code className={className}>{children}</code>
     ) : (
-      <code className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-sm text-neutral-800">{children}</code>
+      <code className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-base text-neutral-800">{children}</code>
     )
   ),
   pre: ({ children }) => (
     // [&>code]: 로 자식 code 요소의 배경을 재설정
-    <pre className="my-4 overflow-x-auto rounded-lg bg-neutral-900 p-4 font-mono text-sm text-neutral-100 [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-neutral-100">
+    <pre className="my-4 overflow-x-auto rounded-lg bg-neutral-900 p-4 font-mono text-base text-neutral-100 [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-neutral-100">
       {children}
     </pre>
   ),
   table: ({ children }) => (
     <div className="my-4 overflow-x-auto">
-      <table className="w-full border-collapse text-sm">{children}</table>
+      <table className="w-full border-collapse text-base">{children}</table>
     </div>
   ),
   thead: ({ children }) => <thead className="border-b border-neutral-300 bg-neutral-100" style={{ backgroundColor: "#f5f5f5", color: "#171717" }}>{children}</thead>,

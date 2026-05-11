@@ -105,13 +105,13 @@ export function PortfolioComposition({
     <section className="rounded-xl border border-neutral-200 bg-white p-5">
       {/* 상단: 제목 + 서브탭 */}
       <div className="mb-4 flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-neutral-700">포트폴리오 비중</h2>
+        <h2 className="text-base font-semibold text-neutral-700">포트폴리오 비중</h2>
         <div className="flex gap-1 rounded-lg bg-neutral-100 p-0.5">
           {(["security", "type", "broker"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => { setTab(t); setActiveIdx(null); }}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              className={`rounded-md px-2.5 py-1 text-sm font-medium transition-colors ${
                 tab === t ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500"
               }`}
             >
@@ -155,7 +155,7 @@ export function PortfolioComposition({
               <p className="text-xl font-bold tabular-nums text-neutral-900">
                 {active.pct.toFixed(1)}%
               </p>
-              <p className="mt-0.5 max-w-[90px] text-center text-xs text-neutral-500 leading-tight truncate">
+              <p className="mt-0.5 max-w-[90px] text-center text-sm text-neutral-500 leading-tight truncate">
                 {active.name}
               </p>
             </>
@@ -164,7 +164,7 @@ export function PortfolioComposition({
               <p className="text-xl font-bold tabular-nums text-neutral-900">
                 {items.length}개
               </p>
-              <p className="text-xs text-neutral-400">
+              <p className="text-sm text-neutral-400">
                 {tab === "security" ? "종목" : tab === "type" ? "유형" : "계좌"}
               </p>
             </>
@@ -188,13 +188,13 @@ export function PortfolioComposition({
                 className="h-3 w-3 shrink-0 rounded-full"
                 style={{ backgroundColor: item.color }}
               />
-              <span className="truncate text-sm text-neutral-800">{item.name}</span>
+              <span className="truncate text-base text-neutral-800">{item.name}</span>
             </div>
             <div className="flex items-center gap-3 shrink-0">
-              <span className="text-xs text-neutral-400 tabular-nums">
+              <span className="text-sm text-neutral-400 tabular-nums">
                 {fmtKRWShort(item.valueKrw)}
               </span>
-              <span className="w-12 text-right text-sm font-semibold tabular-nums text-neutral-900">
+              <span className="w-12 text-right text-base font-semibold tabular-nums text-neutral-900">
                 {item.pct.toFixed(2)}%
               </span>
             </div>

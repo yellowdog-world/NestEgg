@@ -36,7 +36,7 @@ export function ReOcrButton({ imagePath, accountId }: Props) {
       <button
         onClick={handleReOcr}
         disabled={status === "loading"}
-        className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50 active:scale-95 transition-all disabled:opacity-50"
+        className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-base text-neutral-600 hover:bg-neutral-50 active:scale-95 transition-all disabled:opacity-50"
       >
         {status === "loading" ? (
           <>
@@ -53,7 +53,7 @@ export function ReOcrButton({ imagePath, accountId }: Props) {
         )}
       </button>
       {status === "error" && errorMsg && (
-        <p className="text-xs text-red-600">{errorMsg}</p>
+        <p className="text-sm text-red-600">{errorMsg}</p>
       )}
     </div>
   );

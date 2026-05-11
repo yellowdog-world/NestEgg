@@ -242,7 +242,7 @@ export function AssetsAnalytics({
           <button
             key={t.id}
             onClick={() => setMainTab(t.id)}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+            className={`flex-1 py-3 text-base font-medium transition-colors ${
               mainTab === t.id
                 ? "border-b-2 border-neutral-900 text-neutral-900"
                 : "text-neutral-400 hover:text-neutral-600"
@@ -261,17 +261,17 @@ export function AssetsAnalytics({
         {mainTab === "gain" && (
           <div className="flex flex-col gap-4">
             <div>
-              <p className="text-sm text-neutral-500">총 평가금액</p>
+              <p className="text-base text-neutral-500">총 평가금액</p>
               <p className="mt-0.5 text-3xl font-bold tabular-nums text-neutral-900">
                 {fmtKRWShort(totalEvalKrw)}
               </p>
-              <p className="mt-1 text-sm text-neutral-400 tabular-nums">
+              <p className="mt-1 text-base text-neutral-400 tabular-nums">
                 원금 {fmtKRWShort(totalCostKrw)}
               </p>
             </div>
             {totalGainPct !== null && (
               <div className={`rounded-xl p-4 ${gainPos ? "bg-red-50" : "bg-blue-50"}`}>
-                <p className={`text-sm font-medium ${gainPos ? "text-red-600" : "text-blue-600"}`}>
+                <p className={`text-base font-medium ${gainPos ? "text-red-600" : "text-blue-600"}`}>
                   총 수익
                 </p>
                 <p className={`mt-0.5 text-2xl font-bold tabular-nums ${gainPos ? "text-red-500" : "text-blue-500"}`}>
@@ -294,12 +294,12 @@ export function AssetsAnalytics({
                     || (ACCOUNT_LABEL[a.account.type] ?? a.account.type);
                   return (
                     <div key={a.account.id} className="flex items-center justify-between py-3">
-                      <span className="text-sm text-neutral-700">{label}</span>
+                      <span className="text-base text-neutral-700">{label}</span>
                       <div className="text-right">
-                        <p className="text-sm font-semibold tabular-nums text-neutral-900">
+                        <p className="text-base font-semibold tabular-nums text-neutral-900">
                           {fmtKRWShort(a.totalEvalKrw)}
                         </p>
-                        <p className={`text-xs tabular-nums font-medium ${pos ? "text-red-500" : "text-blue-500"}`}>
+                        <p className={`text-sm tabular-nums font-medium ${pos ? "text-red-500" : "text-blue-500"}`}>
                           {pos ? "+" : ""}{fmtKRWShort(gain)} ({pos ? "+" : ""}{pct.toFixed(1)}%)
                         </p>
                       </div>
@@ -336,11 +336,11 @@ export function AssetsAnalytics({
               </div>
               <button
                 onClick={() => setAfterTax((t) => !t)}
-                className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
                   afterTax ? "text-neutral-900" : "text-neutral-400"
                 }`}
               >
-                <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border text-[9px] ${
+                <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border text-xs ${
                   afterTax ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-300 text-transparent"
                 }`}>✓</span>
                 실수령액
@@ -353,7 +353,7 @@ export function AssetsAnalytics({
                 {Math.round(yearTotal).toLocaleString("ko-KR")}원
               </p>
               {yieldPct !== null && (
-                <p className="mt-0.5 text-sm text-neutral-500">
+                <p className="mt-0.5 text-base text-neutral-500">
                   투자배당률 {yieldPct.toFixed(2)}%
                 </p>
               )}
@@ -405,7 +405,7 @@ export function AssetsAnalytics({
                     {/* 월 헤더 */}
                     <div className="flex items-center justify-between py-2.5 border-b border-neutral-100">
                       <span className="text-base font-semibold text-neutral-800">{group.month}월</span>
-                      <span className="text-sm font-semibold tabular-nums text-neutral-800">
+                      <span className="text-base font-semibold tabular-nums text-neutral-800">
                         {Math.round(group.total).toLocaleString("ko-KR")}원
                       </span>
                     </div>
@@ -420,16 +420,16 @@ export function AssetsAnalytics({
                           className="flex items-center gap-3 py-3.5 border-b border-neutral-50"
                         >
                           {/* 날짜 */}
-                          <div className="w-8 shrink-0 text-center text-sm text-neutral-400">
+                          <div className="w-8 shrink-0 text-center text-base text-neutral-400">
                             {day}일
                           </div>
                           {/* 종목 정보 */}
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-neutral-900">
+                            <p className="text-base font-semibold text-neutral-900">
                               {item.ticker ?? item.name}
                             </p>
                             {item.quantity != null && item.per_share != null && (
-                              <p className="text-xs text-neutral-500">
+                              <p className="text-sm text-neutral-500">
                                 {item.quantity % 1 === 0
                                   ? item.quantity.toLocaleString("ko-KR")
                                   : item.quantity}주 · 주당{" "}
@@ -438,17 +438,17 @@ export function AssetsAnalytics({
                                   : `${item.per_share.toLocaleString("ko-KR")}원`}
                               </p>
                             )}
-                            <span className="mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium bg-rose-50 text-rose-600">
+                            <span className="mt-0.5 inline-block rounded px-1.5 py-0.5 text-xs font-medium bg-rose-50 text-rose-600">
                               {DIV_TYPE_LABEL[item.dividend_type] ?? item.dividend_type}
                             </span>
                           </div>
                           {/* 금액 */}
                           <div className="shrink-0 text-right">
-                            <p className="text-sm font-semibold tabular-nums text-neutral-900">
+                            <p className="text-base font-semibold tabular-nums text-neutral-900">
                               {Math.round(display).toLocaleString("ko-KR")}원
                             </p>
                             {isUsd && (
-                              <p className="text-xs tabular-nums text-neutral-400">
+                              <p className="text-sm tabular-nums text-neutral-400">
                                 (${Number(item.amount_original).toFixed(2)})
                               </p>
                             )}
@@ -462,10 +462,10 @@ export function AssetsAnalytics({
             ) : (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
                 <p className="text-2xl">💰</p>
-                <p className="text-sm font-medium text-neutral-600">
+                <p className="text-base font-medium text-neutral-600">
                   {divYear}년 배당 내역이 없습니다
                 </p>
-                <p className="text-xs text-neutral-400 text-center max-w-[220px]">
+                <p className="text-sm text-neutral-400 text-center max-w-[220px]">
                   보유 종목의 배당 이력을 Yahoo Finance에서 자동으로 가져옵니다
                 </p>
               </div>
@@ -481,7 +481,7 @@ export function AssetsAnalytics({
             {timelinePoints.length > 1 ? (
               <>
                 <div className="mb-4">
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-sm text-neutral-400">
                     캡처 시점 평가금액(실선) · 투자원금 추정(점선) — 현재 환율 기준 환산
                   </p>
                 </div>
@@ -491,7 +491,7 @@ export function AssetsAnalytics({
               <div className="flex flex-col items-center justify-center py-12 gap-2">
                 <p className="text-3xl">📈</p>
                 <p className="text-base font-medium text-neutral-600">아직 데이터가 부족해요</p>
-                <p className="text-sm text-neutral-400">스냅샷을 2개 이상 등록하면 추이 차트가 표시됩니다</p>
+                <p className="text-base text-neutral-400">스냅샷을 2개 이상 등록하면 추이 차트가 표시됩니다</p>
               </div>
             )}
           </div>
@@ -508,7 +508,7 @@ export function AssetsAnalytics({
                 <button
                   key={t.id}
                   onClick={() => { setWeightTab(t.id); setActiveIdx(null); }}
-                  className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-colors ${
+                  className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${
                     weightTab === t.id
                       ? "bg-white text-neutral-900 shadow-sm"
                       : "text-neutral-500"
@@ -552,14 +552,14 @@ export function AssetsAnalytics({
                     <p className="text-xl font-bold tabular-nums text-neutral-900">
                       {active.pct.toFixed(1)}%
                     </p>
-                    <p className="mt-0.5 max-w-[90px] text-center text-xs leading-tight text-neutral-500 truncate">
+                    <p className="mt-0.5 max-w-[90px] text-center text-sm leading-tight text-neutral-500 truncate">
                       {active.name}
                     </p>
                   </>
                 ) : (
                   <>
                     <p className="text-xl font-bold text-neutral-900">{items.length}개</p>
-                    <p className="text-xs text-neutral-400">
+                    <p className="text-sm text-neutral-400">
                       {WEIGHT_TABS.find((t) => t.id === weightTab)?.label}
                     </p>
                   </>
@@ -579,13 +579,13 @@ export function AssetsAnalytics({
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
                     <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="truncate text-sm text-neutral-800">{item.name}</span>
+                    <span className="truncate text-base text-neutral-800">{item.name}</span>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
-                    <span className="text-xs tabular-nums text-neutral-400">
+                    <span className="text-sm tabular-nums text-neutral-400">
                       {fmtKRWShort(item.valueKrw)}
                     </span>
-                    <span className="w-12 text-right text-sm font-semibold tabular-nums text-neutral-900">
+                    <span className="w-12 text-right text-base font-semibold tabular-nums text-neutral-900">
                       {item.pct.toFixed(1)}%
                     </span>
                   </div>

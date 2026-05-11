@@ -93,7 +93,7 @@ function NumericInput({
         const n = parseFloat(draft.replace(/,/g, ""));
         onChange(isNaN(n) ? null : n);
       }}
-      className={`w-full rounded border px-2 py-1.5 text-right text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-400
+      className={`w-full rounded border px-2 py-1.5 text-right text-base tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-400
         ${suspect ? "border-amber-400 bg-amber-50 font-medium placeholder:text-amber-400" : "border-neutral-200 bg-white"}
       `}
     />
@@ -211,13 +211,13 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
           <button
             type="button"
             onClick={() => setShowOcrRaw((v) => !v)}
-            className="text-xs text-neutral-400 underline underline-offset-2 hover:text-neutral-600"
+            className="text-sm text-neutral-400 underline underline-offset-2 hover:text-neutral-600"
           >
             {showOcrRaw ? "▲ OCR 원본 값 숨기기" : "▼ OCR 원본 값 보기"}
           </button>
           {showOcrRaw && (
             <div className="mt-2 overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-50">
-              <table className="w-full border-collapse text-xs tabular-nums">
+              <table className="w-full border-collapse text-sm tabular-nums">
                 <thead>
                   <tr className="border-b border-neutral-200">
                     <th className="px-3 py-2 text-left font-medium text-neutral-500">종목명</th>
@@ -252,7 +252,7 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
 
       {/* 테이블 — DB 저장 항목만 표시 */}
       <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
-        <table className="w-full min-w-[480px] border-collapse text-sm">
+        <table className="w-full min-w-[480px] border-collapse text-base">
           <colgroup>
             <col className="w-[200px]" />
             <col className="w-[100px]" />
@@ -263,9 +263,9 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
           </colgroup>
           <thead>
             <tr className="border-b border-neutral-200 bg-neutral-50">
-              <th className="px-3 py-2.5 text-left text-xs font-medium text-neutral-500">종목명</th>
-              <th className="px-2 py-2.5 text-left text-xs font-medium text-neutral-500">티커</th>
-              <th className="px-2 py-2.5 text-right text-xs font-medium text-neutral-500">
+              <th className="px-3 py-2.5 text-left text-sm font-medium text-neutral-500">종목명</th>
+              <th className="px-2 py-2.5 text-left text-sm font-medium text-neutral-500">티커</th>
+              <th className="px-2 py-2.5 text-right text-sm font-medium text-neutral-500">
                 <div className="flex flex-col items-end gap-0.5">
                   수량
                   {hasOcr && (
@@ -276,7 +276,7 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
                         setQtyField(f);
                         applyOcrField("quantity", f);
                       }}
-                      className="cursor-pointer rounded border border-neutral-200 bg-white py-0.5 pl-1.5 pr-5 text-xs font-medium text-neutral-600 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      className="cursor-pointer rounded border border-neutral-200 bg-white py-0.5 pl-1.5 pr-5 text-sm font-medium text-neutral-600 focus:outline-none focus:ring-1 focus:ring-blue-400"
                     >
                       {availableOcrFields.map((o) => (
                         <option key={o.value} value={o.value}>{o.label}</option>
@@ -285,7 +285,7 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
                   )}
                 </div>
               </th>
-              <th className="px-2 py-2.5 text-right text-xs font-medium text-neutral-500">
+              <th className="px-2 py-2.5 text-right text-sm font-medium text-neutral-500">
                 <div className="flex flex-col items-end gap-0.5">
                   평단가<span className="text-amber-500">*</span>
                   {hasOcr && (
@@ -296,7 +296,7 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
                         setAvgField(f);
                         applyOcrField("avg_price", f);
                       }}
-                      className="cursor-pointer rounded border border-neutral-200 bg-white py-0.5 pl-1.5 pr-5 text-xs font-medium text-neutral-600 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      className="cursor-pointer rounded border border-neutral-200 bg-white py-0.5 pl-1.5 pr-5 text-sm font-medium text-neutral-600 focus:outline-none focus:ring-1 focus:ring-blue-400"
                     >
                       {availableOcrFields.map((o) => (
                         <option key={o.value} value={o.value}>{o.label}</option>
@@ -305,7 +305,7 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
                   )}
                 </div>
               </th>
-              <th className="px-2 py-2.5 text-center text-xs font-medium text-neutral-500">통화</th>
+              <th className="px-2 py-2.5 text-center text-sm font-medium text-neutral-500">통화</th>
               <th className="px-2 py-2.5" />
             </tr>
           </thead>
@@ -329,15 +329,15 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
                         value={h.raw_name}
                         onChange={(e) => update(i, { raw_name: e.target.value })}
                         title={h.raw_name}
-                        className="w-full rounded border border-neutral-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        className="w-full rounded border border-neutral-200 bg-white px-2 py-1.5 text-base focus:outline-none focus:ring-1 focus:ring-blue-400"
                       />
                       {isResolving && (
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 animate-pulse">
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-neutral-400 animate-pulse">
                           조회 중…
                         </span>
                       )}
                       {h._isExisting && !isResolving && (
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 rounded bg-blue-100 px-1 py-0.5 text-[9px] font-medium text-blue-500">
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 rounded bg-blue-100 px-1 py-0.5 text-xs font-medium text-blue-500">
                           기존
                         </span>
                       )}
@@ -347,8 +347,8 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
                   {isCash ? (
                     <>
                       {/* 예수금: 통화·잔액만 */}
-                      <td className="px-2 py-2 text-xs text-neutral-400 italic">예수금</td>
-                      <td className="px-2 py-2 text-right text-xs text-neutral-400">잔액</td>
+                      <td className="px-2 py-2 text-sm text-neutral-400 italic">예수금</td>
+                      <td className="px-2 py-2 text-right text-sm text-neutral-400">잔액</td>
                       <td className="px-2 py-2">
                         <NumericInput
                           value={h.avg_price}
@@ -360,7 +360,7 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
                         <select
                           value={h.currency}
                           onChange={(e) => update(i, { currency: e.target.value as "KRW" | "USD" })}
-                          className="w-full rounded border border-neutral-200 bg-white px-1.5 py-1.5 text-xs"
+                          className="w-full rounded border border-neutral-200 bg-white px-1.5 py-1.5 text-sm"
                         >
                           <option value="KRW">KRW</option>
                           <option value="USD">USD</option>
@@ -376,7 +376,7 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
                           onChange={(e) => update(i, { ticker: e.target.value.toUpperCase() })}
                           onBlur={(e) => resolveTickerName(i, e.target.value)}
                           placeholder="QQQ"
-                          className="w-full rounded border border-neutral-200 bg-white px-2 py-1.5 font-mono text-xs uppercase focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          className="w-full rounded border border-neutral-200 bg-white px-2 py-1.5 font-mono text-sm uppercase focus:outline-none focus:ring-1 focus:ring-blue-400"
                         />
                       </td>
                       {/* 수량 */}
@@ -403,7 +403,7 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
                         <select
                           value={h.currency}
                           onChange={(e) => update(i, { currency: e.target.value as "KRW" | "USD" })}
-                          className="w-full rounded border border-neutral-200 bg-white px-1.5 py-1.5 text-xs"
+                          className="w-full rounded border border-neutral-200 bg-white px-1.5 py-1.5 text-sm"
                         >
                           <option value="KRW">KRW</option>
                           <option value="USD">USD</option>
@@ -417,7 +417,7 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
                     <button
                       type="button"
                       onClick={() => update(i, { _delete: !h._delete })}
-                      className="text-xs text-red-400 hover:text-red-600"
+                      className="text-sm text-red-400 hover:text-red-600"
                       title={h._delete ? "복원" : "삭제"}
                     >
                       {h._delete ? "↩" : "×"}
@@ -430,11 +430,11 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
         </table>
       </div>
 
-      <p className="text-xs text-amber-600">
+      <p className="text-sm text-amber-600">
         <span className="font-medium">* 평단가</span>가 비어 있으면 수익률 계산이 불가합니다. 직접 입력해주세요.
       </p>
 
-      <button type="button" onClick={add} className="self-start text-sm text-blue-700 underline">
+      <button type="button" onClick={add} className="self-start text-base text-blue-700 underline">
         + 종목 추가
       </button>
 
@@ -442,21 +442,21 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
         <button
           onClick={handleTempSave}
           disabled={saving}
-          className="rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium hover:bg-neutral-50 disabled:opacity-50"
+          className="rounded-md border border-neutral-300 bg-white px-4 py-2 text-base font-medium hover:bg-neutral-50 disabled:opacity-50"
         >
           임시 저장
         </button>
         <button
           onClick={handleConfirm}
           disabled={saving}
-          className="rounded-md bg-emerald-600 px-5 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-md bg-emerald-600 px-5 py-2 text-base font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {saving ? "저장 중…" : "확인 완료"}
         </button>
       </div>
 
       {errorMsg && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{errorMsg}</p>
+        <p className="rounded-md bg-red-50 px-3 py-2 text-base text-red-800">{errorMsg}</p>
       )}
     </div>
   );

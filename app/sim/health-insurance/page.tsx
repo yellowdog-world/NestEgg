@@ -10,8 +10,8 @@ export default function HealthInsurancePage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">지역가입자 건보료</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h1 className="text-3xl font-bold tracking-tight">지역가입자 건보료</h1>
+        <p className="mt-1 text-base text-neutral-600">
           은퇴 후 직장→지역 전환 시 월 보험료 추정. 단순화 모델 — 공단 모의계산기 교차 확인 권장.
         </p>
       </header>

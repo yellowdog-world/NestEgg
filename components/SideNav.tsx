@@ -33,7 +33,7 @@ export function SideNav() {
       <Link href="/" className="block px-2 text-lg font-semibold tracking-tight">
         🐕 yellowdog
       </Link>
-      <p className="mt-1 px-2 text-xs text-neutral-600">은퇴 자산 관리</p>
+      <p className="mt-1 px-2 text-sm text-neutral-600">은퇴 자산 관리</p>
 
       <nav className="mt-6 flex flex-col gap-0.5">
         {sections.map(({ href, label, icon: Icon, exact, children }) => {
@@ -42,7 +42,7 @@ export function SideNav() {
             <div key={href}>
               <Link
                 href={href}
-                className={`flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors ${
+                className={`flex items-center gap-2 rounded-md px-2 py-2 text-base transition-colors ${
                   active
                     ? "bg-neutral-100 font-medium text-neutral-900"
                     : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
@@ -59,7 +59,7 @@ export function SideNav() {
                     <Link
                       key={child.href}
                       href={child.href}
-                      className={`rounded-md px-2 py-1.5 text-xs transition-colors ${
+                      className={`rounded-md px-2 py-1.5 text-sm transition-colors ${
                         isActive(child.href, child.exact)
                           ? "font-medium text-amber-600"
                           : "text-neutral-500 hover:text-neutral-800"
