@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { fmtKRW, fmtKRWShort } from "@/lib/utils/format";
-import { computeDepletion } from "@/simulators/depletion/deterministic";
+import { computeDepletion, type DepletionOutput } from "@/simulators/depletion/deterministic";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -21,10 +21,8 @@ type RetirementProfile = {
   retirementAge: number;
   targetAge: number;
   monthlyBudget: number;
-  realEstateValue: number;
-  realEstateMarket: number;
-  realEstateLoan: number;
-  realEstateAddress: string;
+  /** 0 = 내 자산 자동 사용, >0 = 사용자 직접 입력값 (원 단위) */
+  overrideAssetsKrw: number;
   nationalPensionMonthly: number;
   privatePensionYearly: number;
   expectedReturn: number;
@@ -38,10 +36,7 @@ const DEFAULT: RetirementProfile = {
   retirementAge: 60,
   targetAge: 90,
   monthlyBudget: 3_000_000,
-  realEstateValue: 0,
-  realEstateMarket: 0,
-  realEstateLoan: 0,
-  realEstateAddress: "",
+  overrideAssetsKrw: 0,
   nationalPensionMonthly: 0,
   privatePensionYearly: 0,
   expectedReturn: 0.05,
@@ -66,7 +61,7 @@ function saveProfile(p: RetirementProfile) {
 }
 
 function fmtSurvival(years: number | null): string {
-  if (years === null || years > 99) return "99년 이상";
+  if (years === null) return "계속 유지";
   if (years <= 0) return "0년";
   const y = Math.floor(years);
   const m = Math.round((years - y) * 12);
@@ -93,7 +88,7 @@ function SetupWizard({
 }) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<RetirementProfile>(DEFAULT);
-  const total = 5;
+  const total = 4;
 
   function next() {
     if (step < total - 1) setStep((s) => s + 1);
@@ -121,7 +116,7 @@ function SetupWizard({
       <div className="flex flex-col gap-1">
         <div className="flex justify-between text-xs text-neutral-400">
           <span>{step + 1}단계 / {total}단계</span>
-          <span>{["기본 정보", "생활비 계획", "부동산 자산", "연금 계획", "수익률 설정"][step]}</span>
+          <span>{["기본 정보", "생활비 계획", "연금 계획", "수익률 설정"][step]}</span>
         </div>
         <div className="h-1.5 rounded-full bg-neutral-100">
           <div
@@ -146,18 +141,12 @@ function SetupWizard({
           />
         )}
         {step === 2 && (
-          <Step3
-            form={form}
-            onChange={(updates) => setForm((f) => ({ ...f, ...updates }))}
-          />
-        )}
-        {step === 3 && (
           <Step4
             form={form}
             onChange={(k, v) => setForm((f) => ({ ...f, [k]: v }))}
           />
         )}
-        {step === 4 && (
+        {step === 3 && (
           <Step5
             form={form}
             onChange={(k, v) => setForm((f) => ({ ...f, [k]: v }))}
@@ -500,10 +489,10 @@ function Step1({
         <div className="flex items-center gap-2">
           <input
             type="number"
-            min={form.currentAge}
+            min={form.currentAge + 1}
             max={90}
             value={form.retirementAge}
-            onChange={(e) => onChange("retirementAge", Number(e.target.value))}
+            onChange={(e) => onChange("retirementAge", Math.max(form.currentAge + 1, Number(e.target.value)))}
             className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
           />
           <span className="shrink-0 text-xs text-neutral-500">세</span>
@@ -571,51 +560,6 @@ function Step2({
   );
 }
 
-function Step3({
-  form,
-  onChange,
-}: {
-  form: RetirementProfile;
-  onChange: (updates: Partial<RetirementProfile>) => void;
-}) {
-  const netValue = Math.max(0, form.realEstateMarket - form.realEstateLoan);
-
-  return (
-    <div className="flex flex-col gap-5">
-      <p className="font-medium text-neutral-800">부동산 자산이 있으신가요?</p>
-      <FieldRow label="주소 (선택)">
-        <input
-          type="text"
-          value={form.realEstateAddress}
-          onChange={(e) => onChange({ realEstateAddress: e.target.value })}
-          placeholder="예: 서울 강남구 삼성동 000"
-          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
-        />
-      </FieldRow>
-      <FieldRow label="현재 시세">
-        <ManWonInput
-          value={form.realEstateMarket}
-          onChange={(v) => onChange({ realEstateMarket: v, realEstateValue: Math.max(0, v - form.realEstateLoan) })}
-        />
-      </FieldRow>
-      <FieldRow label="대출 잔액">
-        <ManWonInput
-          value={form.realEstateLoan}
-          onChange={(v) => onChange({ realEstateLoan: v, realEstateValue: Math.max(0, form.realEstateMarket - v) })}
-        />
-      </FieldRow>
-      {(form.realEstateMarket > 0 || form.realEstateLoan > 0) && (
-        <div className="rounded-lg bg-neutral-50 p-3 text-sm">
-          <span className="text-neutral-500">순자산 (시세 - 대출): </span>
-          <span className="font-semibold">{fmtKRWShort(netValue)}</span>
-        </div>
-      )}
-      {form.realEstateMarket === 0 && (
-        <p className="text-xs text-neutral-400">부동산이 없다면 그냥 다음으로 넘어가세요.</p>
-      )}
-    </div>
-  );
-}
 
 function Step4({
   form,
@@ -675,6 +619,38 @@ function EditForm({
         <p className="mt-1 text-xs text-neutral-500">슬라이더에서 조정한 값이 반영되어 있습니다.</p>
       </header>
 
+      {/* 투자자산 */}
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 flex flex-col gap-3">
+        <p className="text-sm font-semibold text-neutral-700">투자자산</p>
+        <div className="rounded-lg bg-neutral-50 p-3 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] text-neutral-400">내 자산 기준 (자동)</p>
+            <p className="text-base font-bold text-neutral-900">{fmtKRWShort(portfolioData.totalKrw)}</p>
+          </div>
+          {form.overrideAssetsKrw === 0 ? (
+            <button
+              onClick={() => set("overrideAssetsKrw", portfolioData.totalKrw || 100_000_000)}
+              className="text-xs text-blue-600 hover:underline"
+            >
+              직접 입력
+            </button>
+          ) : (
+            <button
+              onClick={() => set("overrideAssetsKrw", 0)}
+              className="text-xs text-neutral-400 hover:underline"
+            >
+              자동으로 되돌리기
+            </button>
+          )}
+        </div>
+        {form.overrideAssetsKrw > 0 && (
+          <div className="flex flex-col gap-1">
+            <p className="text-xs text-neutral-500">직접 입력 (만원 단위)</p>
+            <ManWonInput value={form.overrideAssetsKrw} onChange={(v) => set("overrideAssetsKrw", v)} />
+          </div>
+        )}
+      </section>
+
       {/* 기본 정보 */}
       <section className="rounded-xl border border-neutral-200 bg-white p-5 flex flex-col gap-4">
         <p className="text-sm font-semibold text-neutral-700">기본 정보</p>
@@ -692,8 +668,8 @@ function EditForm({
           <FieldRow label="은퇴 목표">
             <div className="flex items-center gap-1.5">
               <input
-                type="number" min={form.currentAge} max={90} value={form.retirementAge}
-                onChange={(e) => set("retirementAge", Number(e.target.value))}
+                type="number" min={form.currentAge + 1} max={90} value={form.retirementAge}
+                onChange={(e) => set("retirementAge", Math.max(form.currentAge + 1, Number(e.target.value)))}
                 className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
               />
               <span className="shrink-0 text-xs text-neutral-500">세</span>
@@ -739,32 +715,6 @@ function EditForm({
         <FieldRow label="개인연금 / IRP 연 수령액">
           <ManWonInput value={form.privatePensionYearly} onChange={(v) => set("privatePensionYearly", v)} placeholder="0" />
         </FieldRow>
-      </section>
-
-      {/* 부동산 (선택) */}
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 flex flex-col gap-4">
-        <p className="text-sm font-semibold text-neutral-700">부동산 <span className="text-xs font-normal text-neutral-400">(선택)</span></p>
-        <FieldRow label="주소">
-          <input type="text" value={form.realEstateAddress}
-            onChange={(e) => set("realEstateAddress", e.target.value)}
-            placeholder="예: 서울 강남구 삼성동 000"
-            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
-          />
-        </FieldRow>
-        <div className="grid grid-cols-2 gap-3">
-          <FieldRow label="시세">
-            <ManWonInput
-              value={form.realEstateMarket}
-              onChange={(v) => setForm((f) => ({ ...f, realEstateMarket: v, realEstateValue: Math.max(0, v - f.realEstateLoan) }))}
-            />
-          </FieldRow>
-          <FieldRow label="대출 잔액">
-            <ManWonInput
-              value={form.realEstateLoan}
-              onChange={(v) => setForm((f) => ({ ...f, realEstateLoan: v, realEstateValue: Math.max(0, f.realEstateMarket - v) }))}
-            />
-          </FieldRow>
-        </div>
       </section>
 
       {/* 수익률 / 물가상승률 */}
@@ -998,14 +948,6 @@ function generateGuide(
     });
   }
 
-  if (profile.realEstateValue > totalNetAssets * 0.5) {
-    tips.push({
-      type: "info",
-      title: "부동산 비중이 높습니다",
-      desc: `순자산의 ${((profile.realEstateValue / totalNetAssets) * 100).toFixed(0)}%가 부동산입니다. 유동성 확보를 위해 금융 자산 비중 확대를 검토하세요.`,
-    });
-  }
-
   return tips;
 }
 
@@ -1085,41 +1027,42 @@ function SliderPanel({
   onChange: (p: RetirementProfile) => void;
 }) {
   return (
-    <section className="rounded-xl border border-neutral-200 bg-white p-5">
-      <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-neutral-500">
+    <section className="rounded-xl border border-neutral-200 bg-white p-4">
+      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">
         파라미터 조정
       </h2>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-3 gap-x-4 gap-y-3">
         {SLIDERS.map((s) => {
           const value = profile[s.key] as number;
-          const pct = ((value - s.min) / (s.max - s.min)) * 100;
+          const effectiveMin = s.key === "retirementAge" ? profile.currentAge + 1 : s.min;
+          const pct = Math.max(0, Math.min(100, ((value - effectiveMin) / (s.max - effectiveMin)) * 100));
           return (
-            <div key={s.key} className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-neutral-600">{s.label}</span>
+            <div key={s.key} className="flex flex-col gap-1">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-neutral-500">{s.label}</span>
                 <span className="font-semibold tabular-nums text-neutral-900">
                   {s.format(value)}
                 </span>
               </div>
-              <div className="relative">
-                <input
-                  type="range"
-                  min={s.min}
-                  max={s.max}
-                  step={s.step}
-                  value={value}
-                  onChange={(e) =>
-                    onChange({ ...profile, [s.key]: Number(e.target.value) })
-                  }
-                  className="w-full cursor-pointer appearance-none rounded-full bg-neutral-200 accent-amber-500"
-                  style={{
-                    height: "6px",
-                    backgroundImage: `linear-gradient(to right, #f59e0b ${pct}%, #e5e7eb ${pct}%)`,
-                  }}
-                />
-              </div>
-              <div className="flex justify-between text-[10px] text-neutral-400">
-                <span>{s.format(s.min)}</span>
+              <input
+                type="range"
+                min={effectiveMin}
+                max={s.max}
+                step={s.step}
+                value={value}
+                onChange={(e) => {
+                  let v = Number(e.target.value);
+                  if (s.key === "retirementAge") v = Math.max(profile.currentAge + 1, v);
+                  onChange({ ...profile, [s.key]: v });
+                }}
+                className="w-full cursor-pointer appearance-none rounded-full accent-amber-500"
+                style={{
+                  height: "4px",
+                  backgroundImage: `linear-gradient(to right, #f59e0b ${pct}%, #e5e7eb ${pct}%)`,
+                }}
+              />
+              <div className="flex justify-between text-[9px] text-neutral-400">
+                <span>{s.format(effectiveMin)}</span>
                 <span>{s.format(s.max)}</span>
               </div>
             </div>
@@ -1144,45 +1087,109 @@ function Dashboard({
   const now = new Date();
   const dateStr = `${now.getFullYear()}년 ${now.getMonth() + 1}월 기준`;
 
-  // ── 계산 ─────────────────────────────────────────────────────────────────
-  const totalNetAssets = portfolioData.totalKrw + profile.realEstateValue;
+  // ── 유효 자산 (override or 포트폴리오) ───────────────────────────────────────
+  const effectiveAssets = profile.overrideAssetsKrw > 0
+    ? profile.overrideAssetsKrw
+    : portfolioData.totalKrw;
 
+  // ── 현금흐름 ────────────────────────────────────────────────────────────────
   const monthlyDiv = portfolioData.monthlyDivKrw;
   const monthlyNational = profile.nationalPensionMonthly;
   const monthlyPrivate = Math.round(profile.privatePensionYearly / 12);
   const totalMonthlyInflow = monthlyDiv + monthlyNational + monthlyPrivate;
   const monthlyOutflow = profile.monthlyBudget;
   const monthlySurplus = totalMonthlyInflow - monthlyOutflow;
-
-  // 생존 기간: depletion 시뮬레이터로 수익률·물가 반영
   const netYearlyWithdrawal = Math.max(0, monthlyOutflow - totalMonthlyInflow) * 12;
-  const horizonYears = Math.max(1, profile.targetAge - profile.retirementAge + 20);
-  const depletionResult = computeDepletion({
-    startAge: profile.retirementAge,
-    startAssets: portfolioData.totalKrw,
-    yearlyWithdrawal: netYearlyWithdrawal,
-    expectedReturn: profile.expectedReturn,
-    inflation: profile.inflation,
-    inflateWithdrawal: true,
-    horizonYears,
-  });
+
+  // ── 연금저축/IRP 55세 잠금 처리 ──────────────────────────────────────────────
+  const PENSION_UNLOCK_AGE = 55;
+  const pensionLocked =
+    profile.retirementAge < PENSION_UNLOCK_AGE && portfolioData.pensionKrw > 0;
+  const yearsToUnlock = pensionLocked ? PENSION_UNLOCK_AGE - profile.retirementAge : 0;
+  // override 중에는 연금 비율만큼 잠금 추정 (정확도 한계 있음 — override 시 직접 입력값 기준)
+  const lockedPensionKrw = pensionLocked
+    ? profile.overrideAssetsKrw > 0
+      ? 0  // override 자산은 사용자가 직접 입력한 값 → 잠금 분리 불가, 비활성화
+      : portfolioData.pensionKrw
+    : 0;
+  const immediateAssets = effectiveAssets - lockedPensionKrw;
+
+  // ── Horizon: 최소 100세까지 계산 ──────────────────────────────────────────
+  const horizonYears = Math.max(
+    profile.targetAge - profile.retirementAge + 5,
+    100 - profile.retirementAge + 5,
+  );
+
+  // ── 생존 기간 시뮬 (2-phase: 잠금 연금 있을 때) ────────────────────────────
+  let depletionResult: DepletionOutput;
+  if (pensionLocked && lockedPensionKrw > 0) {
+    // Phase 1: retirementAge → 55세 (비연금 자산만 사용)
+    const phase1 = computeDepletion({
+      startAge: profile.retirementAge,
+      startAssets: immediateAssets,
+      yearlyWithdrawal: netYearlyWithdrawal,
+      expectedReturn: profile.expectedReturn,
+      inflation: profile.inflation,
+      inflateWithdrawal: true,
+      horizonYears: yearsToUnlock,
+    });
+    // 55세 시점: 비연금 잔액 + 연금 성장분
+    const pensionGrown = lockedPensionKrw * Math.pow(1 + profile.expectedReturn, yearsToUnlock);
+    const assetsAt55 = phase1.finalAssets + pensionGrown;
+    // 55세 시점의 연간 인출액 (물가 누적 반영)
+    const withdrawalAt55 =
+      netYearlyWithdrawal * Math.pow(1 + profile.inflation, yearsToUnlock);
+
+    // Phase 2: 55세 → 이후 (연금 합산 자산)
+    const phase2HorizonYears = Math.max(
+      profile.targetAge - PENSION_UNLOCK_AGE + 5,
+      100 - PENSION_UNLOCK_AGE + 5,
+    );
+    const phase2 = computeDepletion({
+      startAge: PENSION_UNLOCK_AGE,
+      startAssets: phase1.depletedAtAge !== null ? 0 : assetsAt55,
+      yearlyWithdrawal: withdrawalAt55,
+      expectedReturn: profile.expectedReturn,
+      inflation: profile.inflation,
+      inflateWithdrawal: true,
+      horizonYears: phase2HorizonYears,
+    });
+    depletionResult = {
+      series: [...phase1.series, ...phase2.series],
+      depletedAtAge: phase1.depletedAtAge ?? phase2.depletedAtAge,
+      finalAssets: phase2.finalAssets,
+      finalRealAssets: phase2.finalRealAssets,
+    };
+  } else {
+    depletionResult = computeDepletion({
+      startAge: profile.retirementAge,
+      startAssets: effectiveAssets,
+      yearlyWithdrawal: netYearlyWithdrawal,
+      expectedReturn: profile.expectedReturn,
+      inflation: profile.inflation,
+      inflateWithdrawal: true,
+      horizonYears,
+    });
+  }
+
   const survivalYears: number | null =
     depletionResult.depletedAtAge !== null
       ? depletionResult.depletedAtAge - profile.retirementAge
       : null;
-
-  const targetYears = profile.targetAge - profile.retirementAge;
   const survivalOk =
     depletionResult.depletedAtAge === null ||
     depletionResult.depletedAtAge >= profile.targetAge;
 
-  // 포트폴리오 분류
+  // 100세 시점 잔여 자산 (series에서 age===99 의 endAssets = 100세 잔액)
+  const snapshotAt100 = depletionResult.series.find((s) => s.age === 99);
+  const assetsAt100 = snapshotAt100?.endAssets ?? 0;
+
+  // ── 포트폴리오 분류 ──────────────────────────────────────────────────────────
   const otherKrw = Math.max(
     0,
     portfolioData.totalKrw - portfolioData.pensionKrw - portfolioData.stocksKrw - portfolioData.cashKrw,
   );
   const categories = [
-    { label: "부동산", value: profile.realEstateValue, color: "bg-blue-800", textColor: "text-blue-800" },
     { label: "주식/ETF", value: portfolioData.stocksKrw + otherKrw, color: "bg-blue-500", textColor: "text-blue-500" },
     { label: "연금/IRP", value: portfolioData.pensionKrw, color: "bg-sky-300", textColor: "text-sky-600" },
     { label: "현금/기타", value: portfolioData.cashKrw, color: "bg-neutral-300", textColor: "text-neutral-500" },
@@ -1203,7 +1210,7 @@ function Dashboard({
     monthlySurplus,
     monthlyDiv,
     totalMonthlyInflow,
-    totalNetAssets,
+    effectiveAssets,
   );
 
   return (
@@ -1228,12 +1235,8 @@ function Dashboard({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <KpiCard
           label="전체 순자산"
-          value={fmtKRWShort(totalNetAssets)}
-          sub={
-            profile.realEstateValue > 0
-              ? `투자자산 ${fmtKRWShort(portfolioData.totalKrw)} + 부동산 ${fmtKRWShort(profile.realEstateValue)}`
-              : "부동산 제외 투자자산"
-          }
+          value={fmtKRWShort(effectiveAssets)}
+          sub={profile.overrideAssetsKrw > 0 ? "직접 입력값 기준" : "앱 등록 자산 기준"}
         />
         <KpiCard
           label="월 가중 현금흐름"
@@ -1248,16 +1251,32 @@ function Dashboard({
         <KpiCard
           label="은퇴 자산 생존 기간"
           value={fmtSurvival(survivalYears)}
-          sub={`목표: ${profile.targetAge}세까지 유지`}
+          sub={
+            assetsAt100 > 0
+              ? `100세 잔여 ${fmtKRWShort(assetsAt100)}`
+              : depletionResult.depletedAtAge !== null
+                ? `${depletionResult.depletedAtAge}세 고갈 예상`
+                : `목표 ${profile.targetAge}세 유지`
+          }
           accent={survivalOk ? "green" : "red"}
         />
       </div>
+
+      {/* 55세 연금 잠금 안내 */}
+      {pensionLocked && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <p className="font-medium">연금저축/IRP {fmtKRWShort(lockedPensionKrw)}은 55세부터 인출 가능합니다</p>
+          <p className="mt-0.5 text-xs text-amber-600">
+            은퇴({profile.retirementAge}세)→55세 구간은 비연금 자산만 운용, 55세부터 연금 합산하여 계산했습니다.
+          </p>
+        </div>
+      )}
 
       {/* 슬라이더 패널 */}
       <SliderPanel profile={profile} onChange={onProfileChange} />
 
       {/* 자산 포트폴리오 비중 */}
-      {totalNetAssets > 0 && (
+      {effectiveAssets > 0 && (
         <section className="rounded-xl border border-neutral-200 bg-white p-5">
           <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-neutral-500">
             자산 포트폴리오 비중
