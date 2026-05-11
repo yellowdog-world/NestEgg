@@ -7,11 +7,13 @@ import { createClient } from "@supabase/supabase-js";
 import { MARKET_CACHE } from "./cache-config";
 
 /** 배당 데이터 캐시 전용 클라이언트 — 유저 세션 불필요, service role로 직접 접근 */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _cacheClient: any = null;
 function getCacheClient() {
-  return createClient(
+  return (_cacheClient ??= createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  ));
 }
 
 const HEADERS = { "User-Agent": "Mozilla/5.0" };
