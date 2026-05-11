@@ -293,6 +293,16 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
       {/* 종목 목록 */}
       {holdings.length > 0 && (
         <div className="border-t border-neutral-100">
+          {/* 컬럼 헤더 */}
+          <div className="flex items-center gap-x-1 px-4 py-1.5 border-b border-neutral-50 text-[10px] text-neutral-400">
+            <span className="flex-1 min-w-0">종목명</span>
+            <span className="w-10 shrink-0 text-right">보유수</span>
+            <span className="w-11 shrink-0 text-right">원금</span>
+            <span className="w-11 shrink-0 text-right">평가</span>
+            <span className="w-[52px] shrink-0 text-right">손익</span>
+            <span className="w-[52px] shrink-0 text-right">수익율</span>
+          </div>
+
           <div className="divide-y divide-neutral-50">
             {[...holdings].sort((a, b) => (a.isCash === b.isCash ? 0 : a.isCash ? 1 : -1)).map((h) => {
               if (editId === h.id) {
@@ -336,7 +346,7 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
               }
 
               if (h.isCash) {
-                // 예수금 행 — 한 줄
+                // 예수금 행 — 컬럼 헤더에 맞춰 정렬 (손익·수익율 칸은 비움)
                 const balanceStr =
                   h.avg_price !== null
                     ? h.currency === "USD"
@@ -344,30 +354,23 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                       : fmtKRW(h.avg_price)
                     : "—";
                 return (
-                  <div
-                    key={h.id}
-                    className="flex items-center gap-2 px-4 py-2 bg-neutral-50/60"
-                  >
-                    <span className="flex-1 truncate text-xs text-neutral-500">
-                      {h.raw_name} · {h.currency}
+                  <div key={h.id} className="flex items-center gap-x-1 px-4 py-2 bg-neutral-50/60 text-xs tabular-nums">
+                    <span className="flex-1 min-w-0 truncate text-neutral-500">{h.raw_name} · {h.currency}</span>
+                    <span className="w-10 shrink-0 text-right text-neutral-400">{balanceStr !== "—" ? balanceStr : "—"}</span>
+                    <span className="w-11 shrink-0 text-right text-neutral-400">—</span>
+                    <span className="w-11 shrink-0 text-right font-medium text-neutral-700">
+                      {h.liveEvalKrw != null ? fmtShort(h.liveEvalKrw) : "—"}
                     </span>
-                    <span className="shrink-0 text-xs tabular-nums text-neutral-400">{balanceStr}</span>
-                    <span className="shrink-0 text-sm font-semibold tabular-nums text-neutral-700">
-                      {h.liveEvalKrw != null ? fmtKRWShort(h.liveEvalKrw) : "—"}
-                    </span>
+                    <span className="w-[52px] shrink-0" />
+                    <span className="w-[52px] shrink-0" />
                   </div>
                 );
               }
 
-              // 일반 종목 행 — 한 줄 (수량·원금·평가·수익금·수익율)
-              // 미국 주식은 티커, 한국 주식은 종목명 표시
-              const displayName =
-                h.market !== "KRX" && h.ticker ? h.ticker : h.raw_name;
-
+              // 일반 종목 행
+              const displayName = h.market !== "KRX" && h.ticker ? h.ticker : h.raw_name;
               const changeSign = (h.livePriceChangePercent ?? 0) >= 0;
               const returnSign = (h.liveReturnPct ?? 0) >= 0;
-
-              // 원금(KRW) 계산: 명시적으로 USD 시장인 경우만 환산 (null 시장은 KRW로 처리)
               const isUsdMarket = h.market !== null && h.market !== "KRX";
               const costKrw =
                 h.avg_price !== null
@@ -384,9 +387,9 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                 <div
                   key={h.id}
                   onClick={() => startEdit(h)}
-                  className="flex items-center gap-1.5 px-4 py-2 cursor-pointer hover:bg-neutral-50 transition-colors"
+                  className="flex items-center gap-x-1 px-4 py-2 cursor-pointer hover:bg-neutral-50 transition-colors"
                 >
-                  {/* 종목명(또는 티커) + 당일등락률 */}
+                  {/* 종목명 + 당일등락률 */}
                   <div className="flex min-w-0 flex-1 items-center gap-1">
                     <span className="truncate text-sm font-medium text-neutral-900">{displayName}</span>
                     {h.livePriceChangePercent != null && (
@@ -395,40 +398,26 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                       </span>
                     )}
                   </div>
-
-                  {/* 수량·원금·평가금·수익금·수익율 */}
-                  <div className="flex shrink-0 items-center gap-1 text-xs tabular-nums">
-                    <span className="text-neutral-400">{h.quantity.toLocaleString()}주</span>
-
-                    {costKrw !== null && (
-                      <>
-                        <span className="text-neutral-200">·</span>
-                        <span className="text-neutral-400">원금{fmtShort(costKrw)}</span>
-                      </>
-                    )}
-
-                    {h.liveEvalKrw !== null && (
-                      <>
-                        <span className="text-neutral-200">·</span>
-                        <span className="font-medium text-neutral-700">평가{fmtShort(h.liveEvalKrw)}</span>
-                      </>
-                    )}
-
-                    {gainKrw !== null && (
-                      <>
-                        <span className="text-neutral-200">·</span>
-                        <span className={gainKrw >= 0 ? "text-red-500" : "text-blue-500"}>
-                          {gainKrw >= 0 ? "+" : ""}{fmtShort(gainKrw)}
-                        </span>
-                      </>
-                    )}
-
-                    {h.liveReturnPct !== null && (
-                      <span className={`font-semibold ${returnSign ? "text-red-500" : "text-blue-500"}`}>
-                        {returnSign ? "+" : ""}{h.liveReturnPct.toFixed(1)}%
-                      </span>
-                    )}
-                  </div>
+                  {/* 보유수 */}
+                  <span className="w-10 shrink-0 text-right text-xs tabular-nums text-neutral-500">
+                    {h.quantity.toLocaleString()}주
+                  </span>
+                  {/* 원금 */}
+                  <span className="w-11 shrink-0 text-right text-xs tabular-nums text-neutral-500">
+                    {costKrw !== null ? fmtShort(costKrw) : "—"}
+                  </span>
+                  {/* 평가 */}
+                  <span className="w-11 shrink-0 text-right text-xs tabular-nums font-medium text-neutral-800">
+                    {h.liveEvalKrw !== null ? fmtShort(h.liveEvalKrw) : "—"}
+                  </span>
+                  {/* 손익 */}
+                  <span className={`w-[52px] shrink-0 text-right text-xs tabular-nums ${gainKrw == null ? "text-neutral-300" : gainKrw >= 0 ? "text-red-500" : "text-blue-500"}`}>
+                    {gainKrw !== null ? `${gainKrw >= 0 ? "+" : ""}${fmtShort(gainKrw)}` : "—"}
+                  </span>
+                  {/* 수익율 */}
+                  <span className={`w-[52px] shrink-0 text-right text-xs tabular-nums font-semibold ${h.liveReturnPct == null ? "text-neutral-300" : returnSign ? "text-red-500" : "text-blue-500"}`}>
+                    {h.liveReturnPct !== null ? `${returnSign ? "+" : ""}${h.liveReturnPct.toFixed(1)}%` : "—"}
+                  </span>
                 </div>
               );
             })}
