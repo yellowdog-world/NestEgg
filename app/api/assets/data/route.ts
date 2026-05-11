@@ -18,7 +18,7 @@ export async function GET() {
   const [{ data: accounts }, { data: snapshots }] = await Promise.all([
     supabase
       .from("accounts")
-      .select("id,type,broker,nickname,principal_krw")
+      .select("id,type,broker,nickname,principal_amount,principal_currency")
       .order("created_at", { ascending: true }),
     supabase
       .from("snapshots")

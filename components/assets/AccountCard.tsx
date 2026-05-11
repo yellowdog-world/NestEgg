@@ -52,7 +52,7 @@ export type HoldingWithLive = {
 };
 
 type Props = {
-  account: { id: string; type: string; broker: string | null; nickname: string | null; principal_krw: number | null };
+  account: { id: string; type: string; broker: string | null; nickname: string | null; principal_amount: number | null; principal_currency: string | null };
   capturedAt: string | null;
   holdings: HoldingWithLive[];
   totalEvalKrw: number;
@@ -80,8 +80,13 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
     type: account.type,
     broker: account.broker ?? "",
     nickname: account.nickname ?? "",
-    // 만원 단위로 표시 (DB는 원 단위 저장)
-    principalMan: account.principal_krw != null ? String(Math.round(account.principal_krw / 10_000)) : "",
+    principalCurrency: (account.principal_currency ?? "KRW") as "KRW" | "USD",
+    // KRW: 만원 단위 입력 / USD: 달러 단위 입력
+    principalAmount: account.principal_amount != null
+      ? account.principal_currency === "USD"
+        ? String(account.principal_amount)
+        : String(Math.round(account.principal_amount / 10_000))
+      : "",
   });
   const [acctSaving, setAcctSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -89,13 +94,19 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
   async function saveAccount() {
     setAcctSaving(true);
     try {
-      const { principalMan, ...rest } = acctForm;
+      const { principalAmount, principalCurrency, ...rest } = acctForm;
+      const rawAmount = principalAmount
+        ? principalCurrency === "USD"
+          ? Number(principalAmount)
+          : Math.round(Number(principalAmount) * 10_000)
+        : null;
       const res = await fetch(`/api/accounts/${account.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           ...rest,
-          principal_krw: principalMan ? Math.round(Number(principalMan) * 10_000) : null,
+          principal_amount: rawAmount,
+          principal_currency: principalAmount ? principalCurrency : null,
         }),
       });
       if (!res.ok) throw new Error("저장 실패");
@@ -346,22 +357,32 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                   className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
                 />
               </label>
-              <label className="flex flex-col gap-1 text-sm">
+              <div className="flex flex-col gap-1 text-sm">
                 <span className="font-medium text-neutral-700">투자금</span>
                 <div className="flex items-center gap-1.5">
+                  <select
+                    value={acctForm.principalCurrency}
+                    onChange={(e) => setAcctForm({ ...acctForm, principalCurrency: e.target.value as "KRW" | "USD", principalAmount: "" })}
+                    className="rounded-md border border-neutral-300 px-2 py-2 text-sm"
+                  >
+                    <option value="KRW">KRW</option>
+                    <option value="USD">USD</option>
+                  </select>
                   <input
                     type="number"
-                    value={acctForm.principalMan}
-                    onChange={(e) => setAcctForm({ ...acctForm, principalMan: e.target.value })}
-                    placeholder="실제 납입한 금액 (선택)"
+                    value={acctForm.principalAmount}
+                    onChange={(e) => setAcctForm({ ...acctForm, principalAmount: e.target.value })}
+                    placeholder={acctForm.principalCurrency === "KRW" ? "예: 5000" : "예: 50000"}
                     className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm"
                   />
-                  <span className="shrink-0 text-sm text-neutral-500">만원</span>
+                  <span className="shrink-0 text-sm text-neutral-500">
+                    {acctForm.principalCurrency === "KRW" ? "만원" : "USD"}
+                  </span>
                 </div>
                 <p className="text-[11px] text-neutral-400">
                   입력 시 투자금 기준 수익률로 표시됩니다
                 </p>
-              </label>
+              </div>
             </div>
             <div className="mt-5 flex gap-2">
               <button
@@ -424,7 +445,12 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                 type: account.type,
                 broker: account.broker ?? "",
                 nickname: account.nickname ?? "",
-                principalMan: account.principal_krw != null ? String(Math.round(account.principal_krw / 10_000)) : "",
+                principalCurrency: (account.principal_currency ?? "KRW") as "KRW" | "USD",
+                principalAmount: account.principal_amount != null
+                  ? account.principal_currency === "USD"
+                    ? String(account.principal_amount)
+                    : String(Math.round(account.principal_amount / 10_000))
+                  : "",
               });
                 setShowDeleteConfirm(false);
                 setShowAccountEdit(true);
@@ -444,12 +470,18 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
 
         {/* 통계 한 줄 */}
         {(() => {
-          const principal = account.principal_krw;
-          const usePrincipal = principal != null && principal > 0;
+          const principalAmt = account.principal_amount;
+          const principalCur = account.principal_currency ?? "KRW";
+          const usePrincipal = principalAmt != null && principalAmt > 0;
 
-          // 투자금 기준 (사용자 입력)
-          const investGain = usePrincipal ? totalEvalKrw - principal : null;
-          const investPct = usePrincipal ? (investGain! / principal) * 100 : null;
+          // 투자금 KRW 환산 (USD면 현재 환율 적용)
+          const principalKrw = usePrincipal
+            ? principalCur === "USD" ? principalAmt! * usdKrw : principalAmt!
+            : null;
+
+          // 투자금 기준 손익/수익률
+          const investGain = principalKrw != null ? totalEvalKrw - principalKrw : null;
+          const investPct = principalKrw ? (investGain! / principalKrw) * 100 : null;
 
           // 매수금액 기준 (fallback)
           const costGain = totalEvalKrw - totalCostKrw;
@@ -457,8 +489,15 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
 
           const gain = usePrincipal ? investGain! : costGain;
           const pct = usePrincipal ? investPct : costPct;
-          const baseKrw = usePrincipal ? principal : totalCostKrw;
+          const baseKrw = usePrincipal ? principalKrw! : totalCostKrw;
           const pos = gain >= 0;
+
+          // 투자금 표시 문자열 (원래 통화 기준)
+          const principalLabel = usePrincipal
+            ? principalCur === "USD"
+              ? `$${principalAmt!.toLocaleString()}`
+              : fmtShort(principalAmt!)
+            : null;
 
           return (
             <div className="mt-2 flex items-baseline gap-x-1.5 text-base tabular-nums overflow-hidden">
@@ -468,7 +507,9 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                     {usePrincipal && (
                       <span className="text-xs font-medium text-neutral-400">투자금</span>
                     )}
-                    <span className="font-medium text-neutral-500">{fmtShort(baseKrw)}</span>
+                    <span className="font-medium text-neutral-500">
+                      {usePrincipal ? principalLabel : fmtShort(baseKrw)}
+                    </span>
                   </div>
                   <span className="shrink-0 text-neutral-300">→</span>
                 </>

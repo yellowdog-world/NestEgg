@@ -8,7 +8,7 @@ import { AccountCard, type HoldingWithLive } from "./AccountCard";
 import { fmtKRWShort, fmtKRW, fmtUSD, fmtNum } from "@/lib/utils/format";
 
 export type EnrichedAccount = {
-  account: { id: string; type: string; broker: string | null; nickname: string | null; principal_krw: number | null };
+  account: { id: string; type: string; broker: string | null; nickname: string | null; principal_amount: number | null; principal_currency: string | null };
   capturedAt: string | null;
   holdings: HoldingWithLive[];
   totalEvalKrw: number;
