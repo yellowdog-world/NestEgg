@@ -595,93 +595,99 @@ function HoldingsTable({
   });
 
   return (
-    <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-      {sortedTypes.map((accountType) => {
-        const brokerGroups = byType.get(accountType)!;
-        const typeTotal = brokerGroups.reduce((s, g) => s + g.group_total, 0);
-        const typeCost  = brokerGroups.reduce((s, g) => s + g.group_cost, 0);
-        const typePnl   = typeTotal - typeCost;
-        const bgCls     = ACCOUNT_TYPE_BG[accountType] ?? "bg-neutral-50";
+    <div className="rounded-xl border border-neutral-200 bg-white overflow-hidden">
 
-        return (
-          <div key={accountType} className="flex border-t border-neutral-200 first:border-t-0">
-
-            {/* ── 왼쪽: 계좌유형 레이블 (세로 병합) ── */}
-            <div className={`flex w-14 shrink-0 items-center justify-center border-r border-neutral-200 ${bgCls}`}>
-              <span
-                className="text-[11px] font-bold tracking-widest text-neutral-500"
-                style={{ writingMode: "vertical-lr" }}
-              >
+      {/* ── 모바일: 계좌유형 요약 카드 2열 그리드 ── */}
+      <div className="grid grid-cols-2 gap-px bg-neutral-200 md:hidden">
+        {sortedTypes.map((accountType) => {
+          const brokerGroups = byType.get(accountType)!;
+          const typeTotal = brokerGroups.reduce((s, g) => s + g.group_total, 0);
+          const typeCost  = brokerGroups.reduce((s, g) => s + g.group_cost, 0);
+          const typePnl   = typeTotal - typeCost;
+          const bgCls     = ACCOUNT_TYPE_BG[accountType] ?? "bg-neutral-50";
+          return (
+            <div key={accountType} className={`flex flex-col gap-0.5 px-3 py-3 ${bgCls}`}>
+              <p className="text-[11px] font-bold tracking-wide text-neutral-500">
                 {ACCOUNT_TYPE_LABEL[accountType] ?? accountType}
-              </span>
+              </p>
+              <p className="text-base font-bold tabular-nums text-neutral-900">
+                {fmtKRWShort(typeTotal)}
+              </p>
+              <p className={`text-xs tabular-nums font-medium ${typePnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                {typePnl >= 0 ? "+" : ""}{fmtKRWShort(typePnl)}
+                {typeCost > 0 && (
+                  <span className="ml-1 opacity-70">
+                    ({typePnl >= 0 ? "+" : ""}{((typePnl / typeCost) * 100).toFixed(2)}%)
+                  </span>
+                )}
+              </p>
             </div>
+          );
+        })}
+      </div>
 
-            {/* ── 오른쪽: 요약 + 종목 행 ── */}
-            <div className="flex-1 overflow-hidden">
-              {/* 요약 행 — 항상 표시 */}
-              <div className="flex items-center justify-between px-3 py-3">
-                <span className="text-sm font-semibold text-neutral-700">
+      {/* ── 데스크톱: 왼쪽 레이블 + 종목 상세 ── */}
+      <div className="hidden md:block">
+        {sortedTypes.map((accountType) => {
+          const brokerGroups = byType.get(accountType)!;
+          const bgCls = ACCOUNT_TYPE_BG[accountType] ?? "bg-neutral-50";
+
+          return (
+            <div key={accountType} className="flex border-t border-neutral-200 first:border-t-0">
+              {/* 왼쪽 레이블 */}
+              <div className={`flex w-14 shrink-0 items-center justify-center border-r border-neutral-200 ${bgCls}`}>
+                <span
+                  className="text-[11px] font-bold tracking-widest text-neutral-500"
+                  style={{ writingMode: "vertical-lr" }}
+                >
                   {ACCOUNT_TYPE_LABEL[accountType] ?? accountType}
                 </span>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold tabular-nums text-neutral-900">
-                    {fmtKRWShort(typeTotal)}
-                  </span>
-                  <span className={`text-sm tabular-nums font-medium ${typePnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                    {typePnl >= 0 ? "+" : ""}{fmtKRWShort(typePnl)}
-                    {typeCost > 0 && (
-                      <span className="ml-1 text-xs opacity-70">
-                        ({typePnl >= 0 ? "+" : ""}{((typePnl / typeCost) * 100).toFixed(2)}%)
-                      </span>
-                    )}
-                  </span>
-                </div>
               </div>
 
-              {/* 종목 행 — 넓은 화면에서만 표시 */}
-              {brokerGroups.flatMap((group) =>
-                group.holdings.map((h, i) => {
-                  const pnl    = h.eval_krw - h.cost_krw;
-                  const pnlPct = h.cost_krw > 0 ? (pnl / h.cost_krw) * 100 : 0;
-                  return (
-                    <div
-                      key={`${group.broker}-${h.ticker}-${i}`}
-                      className="hidden md:flex items-center gap-3 border-t border-neutral-100 px-3 py-2.5"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-neutral-800">{h.raw_name}</p>
-                        <p className="text-xs text-neutral-400">
-                          {group.broker && (
-                            <span className="mr-1.5">{group.broker} ·</span>
-                          )}
-                          {h.ticker}
-                          {h.qty > 0 && (
-                            <> · {h.qty.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}주</>
-                          )}
-                          {h.currency !== "KRW" && (
-                            <span className="ml-1 text-neutral-300">{h.currency}</span>
-                          )}
-                        </p>
+              {/* 종목 행 */}
+              <div className="flex-1 overflow-hidden">
+                {brokerGroups.flatMap((group) =>
+                  group.holdings.map((h, i) => {
+                    const pnl    = h.eval_krw - h.cost_krw;
+                    const pnlPct = h.cost_krw > 0 ? (pnl / h.cost_krw) * 100 : 0;
+                    return (
+                      <div
+                        key={`${group.broker}-${h.ticker}-${i}`}
+                        className="flex items-center gap-3 border-b border-neutral-100 px-3 py-2.5 last:border-b-0"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-neutral-800">{h.raw_name}</p>
+                          <p className="text-xs text-neutral-400">
+                            {group.broker && <span className="mr-1.5">{group.broker} ·</span>}
+                            {h.ticker}
+                            {h.qty > 0 && (
+                              <> · {h.qty.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}주</>
+                            )}
+                            {h.currency !== "KRW" && (
+                              <span className="ml-1 text-neutral-300">{h.currency}</span>
+                            )}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-semibold tabular-nums text-neutral-800">
+                            {fmtKRWShort(h.eval_krw)}
+                          </p>
+                          <p className={`text-xs tabular-nums ${pnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                            {pnl >= 0 ? "+" : ""}{fmtKRWShort(pnl)}
+                            <span className="ml-1 opacity-70">
+                              ({pnl >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%)
+                            </span>
+                          </p>
+                        </div>
                       </div>
-                      <div className="shrink-0 text-right">
-                        <p className="text-sm font-semibold tabular-nums text-neutral-800">
-                          {fmtKRWShort(h.eval_krw)}
-                        </p>
-                        <p className={`text-xs tabular-nums ${pnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                          {pnl >= 0 ? "+" : ""}{fmtKRWShort(pnl)}
-                          <span className="ml-1 opacity-70">
-                            ({pnl >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%)
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+                    );
+                  })
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
 
       {/* 합계 행 */}
       <div className="flex items-center justify-between border-t-2 border-neutral-200 px-4 py-3">
