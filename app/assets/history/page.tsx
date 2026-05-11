@@ -8,7 +8,13 @@ import { AssetTimeline } from "@/components/assets/AssetTimeline";
 import {
   CategoryTrendChart,
   CategoryBarToday,
+  GenericStackedChart,
+  GenericBarToday,
+  buildSeries,
+  ACCOUNT_TYPE_COLOR,
+  ACCOUNT_TYPE_LABEL,
   type CategoryPoint,
+  type GenericPoint,
 } from "@/components/assets/CategoryTrendChart";
 import {
   aggregateByCategory,
@@ -30,18 +36,26 @@ type DailyRow = {
   snapshot_date: string;
   total_krw: number;
   breakdown: {
-    accounts: { type: string; total_krw: number; holdings: HoldingDetail[] }[];
+    accounts: {
+      account_id: string;
+      broker: string | null;
+      type: string;
+      nickname: string | null;
+      total_krw: number;
+      holdings: HoldingDetail[];
+    }[];
     category_breakdown?: CategoryBreakdown;
     usd_total_krw?: number;
+    broker_breakdown?: Record<string, number>;
+    account_type_breakdown?: Record<string, number>;
+    account_breakdown?: Record<string, { total_krw: number; label: string }>;
+    holdings_breakdown?: Record<string, { name: string; eval_krw: number }>;
   } | null;
 };
 
-type DividendRow = {
-  received_at: string; // "YYYY-MM-DD"
-  amount_krw: number;
-};
-
+type DividendRow = { received_at: string; amount_krw: number };
 type Period = "1W" | "1M" | "3M" | "6M" | "1Y" | "ALL";
+type ChartView = "total" | "category" | "broker" | "accountType" | "account";
 
 const PERIOD_LABELS: { key: Period; label: string }[] = [
   { key: "1W", label: "1주" },
@@ -50,6 +64,14 @@ const PERIOD_LABELS: { key: Period; label: string }[] = [
   { key: "6M", label: "6달" },
   { key: "1Y", label: "1년" },
   { key: "ALL", label: "전체" },
+];
+
+const VIEW_LABELS: { key: ChartView; label: string }[] = [
+  { key: "total",       label: "총 자산" },
+  { key: "category",    label: "전략" },
+  { key: "broker",      label: "증권사" },
+  { key: "accountType", label: "계좌유형" },
+  { key: "account",     label: "계좌별" },
 ];
 
 function cutoffDate(period: Period): string | null {
@@ -90,8 +112,6 @@ function DeltaCard({ label, current, base }: { label: string; current: number; b
   );
 }
 
-// ── 지표 카드 ─────────────────────────────────────────────────────────────────
-
 function MetricCard({ label, value, sub, color }: {
   label: string; value: string; sub?: string; color?: string;
 }) {
@@ -110,7 +130,7 @@ export default function HistoryPage() {
   const [rows, setRows] = useState<DailyRow[]>([]);
   const [dividends, setDividends] = useState<DividendRow[]>([]);
   const [period, setPeriod] = useState<Period>("3M");
-  const [view, setView] = useState<"total" | "category">("total");
+  const [view, setView] = useState<ChartView>("total");
   const [loading, setLoading] = useState(true);
   const [fireTarget, setFireTarget] = useState<number>(0);
 
@@ -119,7 +139,6 @@ export default function HistoryPage() {
       const supabase = createClient();
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-
       const [{ data: snap }, { data: divs }] = await Promise.all([
         supabase
           .from("portfolio_daily_snapshots")
@@ -131,21 +150,16 @@ export default function HistoryPage() {
           .gte("received_at", oneYearAgo.toISOString().slice(0, 10))
           .order("received_at", { ascending: true }),
       ]);
-
       setRows((snap as DailyRow[]) ?? []);
       setDividends((divs as DividendRow[]) ?? []);
       setLoading(false);
     }
     load();
-
-    // FIRE 달성률: localStorage의 은퇴 프로필에서 계산
     try {
       const raw = localStorage.getItem("retirement-profile");
       if (raw) {
-        const profile = JSON.parse(raw) as { monthlyBudget?: number };
-        if (profile.monthlyBudget) {
-          setFireTarget(Math.round((profile.monthlyBudget * 12) / 0.04));
-        }
+        const p = JSON.parse(raw) as { monthlyBudget?: number };
+        if (p.monthlyBudget) setFireTarget(Math.round((p.monthlyBudget * 12) / 0.04));
       }
     } catch { /* ignore */ }
   }, []);
@@ -156,11 +170,13 @@ export default function HistoryPage() {
     return cut ? rows.filter((r) => r.snapshot_date >= cut) : rows;
   }, [rows, period]);
 
-  // 차트 데이터
+  // 총 자산 라인 데이터
   const timelineData = useMemo(
     () => filtered.map((r) => ({ date: r.snapshot_date, total: r.total_krw, cost: 0 })),
     [filtered],
   );
+
+  // 카테고리별 스택 데이터
   const categoryData = useMemo((): CategoryPoint[] =>
     filtered.map((r) => {
       const cb: CategoryBreakdown =
@@ -168,6 +184,65 @@ export default function HistoryPage() {
         aggregateByCategory((r.breakdown?.accounts ?? []).flatMap((a) => a.holdings));
       return { date: r.snapshot_date, ...cb };
     }),
+    [filtered],
+  );
+
+  // 전체 행에서 동적 key 수집 (증권사 / 계좌유형 / 계좌)
+  const allBrokers = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) {
+      for (const k of Object.keys(r.breakdown?.broker_breakdown ?? {})) set.add(k);
+    }
+    return [...set].sort();
+  }, [rows]);
+
+  const allAccountTypes = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) {
+      for (const k of Object.keys(r.breakdown?.account_type_breakdown ?? {})) set.add(k);
+    }
+    // 고정 순서로 정렬
+    const ORDER = ["pension_fund", "isa", "irp", "regular", "overseas", "corp", "bank"];
+    return [...set].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
+  }, [rows]);
+
+  const allAccounts = useMemo(() => {
+    // account_id → label (최신 row 기준)
+    const map = new Map<string, string>();
+    for (const r of rows) {
+      for (const [id, v] of Object.entries(r.breakdown?.account_breakdown ?? {})) {
+        map.set(id, v.label);
+      }
+    }
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [rows]);
+
+  // SeriesMeta 생성
+  const brokerSeries    = useMemo(() => buildSeries(allBrokers), [allBrokers]);
+  const accountTypeSeries = useMemo(
+    () => buildSeries(allAccountTypes, ACCOUNT_TYPE_COLOR, ACCOUNT_TYPE_LABEL),
+    [allAccountTypes],
+  );
+  const accountSeries   = useMemo(
+    () => buildSeries(allAccounts.map(([id]) => id), {}, Object.fromEntries(allAccounts)),
+    [allAccounts],
+  );
+
+  // GenericPoint 빌더
+  function buildGenericData(
+    keyExtractor: (row: DailyRow) => Record<string, number>,
+  ): GenericPoint[] {
+    return filtered.map((r) => ({ date: r.snapshot_date, ...keyExtractor(r) }));
+  }
+
+  const brokerData     = useMemo(() => buildGenericData((r) => r.breakdown?.broker_breakdown ?? {}), [filtered]);
+  const accountTypeData = useMemo(() => buildGenericData((r) => r.breakdown?.account_type_breakdown ?? {}), [filtered]);
+  const accountData    = useMemo(() =>
+    buildGenericData((r) =>
+      Object.fromEntries(
+        Object.entries(r.breakdown?.account_breakdown ?? {}).map(([k, v]) => [k, v.total_krw]),
+      ),
+    ),
     [filtered],
   );
 
@@ -183,7 +258,14 @@ export default function HistoryPage() {
     );
   }, [latestRow]);
 
-  // 변동 기준 계산
+  const todayBroker       = latestRow?.breakdown?.broker_breakdown ?? {};
+  const todayAccountType  = latestRow?.breakdown?.account_type_breakdown ?? {};
+  const todayAccountMap   = latestRow?.breakdown?.account_breakdown ?? {};
+  const todayAccount      = Object.fromEntries(
+    Object.entries(todayAccountMap).map(([k, v]) => [k, v.total_krw]),
+  );
+
+  // 변동 기준
   function baseTotal(days: number): number | null {
     const dt = new Date();
     dt.setDate(dt.getDate() - days);
@@ -194,49 +276,34 @@ export default function HistoryPage() {
   const yearStart = `${new Date().getFullYear()}-01-01`;
   const ytdBase = (() => {
     const r = rows.find((r) => r.snapshot_date >= yearStart);
-    // 오늘 것과 같은 날짜면 비교 의미 없음
     return r && r.snapshot_date < (latestRow?.snapshot_date ?? "") ? r.total_krw : null;
   })();
 
-  // Drawdown (고점 대비 낙폭)
+  // Drawdown
   const { drawdownPct, peakDate } = useMemo(() => {
-    if (!rows.length) return { drawdownPct: 0, peakDate: "" };
-    let peak = 0;
-    let pDate = "";
+    let peak = 0, pDate = "";
     for (const r of rows) {
       if (r.total_krw > peak) { peak = r.total_krw; pDate = r.snapshot_date; }
     }
-    const dd = peak > 0 ? ((todayTotal - peak) / peak) * 100 : 0;
-    return { drawdownPct: dd, peakDate: pDate };
+    return { drawdownPct: peak > 0 ? ((todayTotal - peak) / peak) * 100 : 0, peakDate: pDate };
   }, [rows, todayTotal]);
 
   // 환 노출
   const usdTotalKrw = latestRow?.breakdown?.usd_total_krw ??
-    (latestRow?.breakdown?.accounts ?? [])
-      .flatMap((a) => a.holdings)
-      .filter((h) => h.currency === "USD")
-      .reduce((s, h) => s + h.eval_krw, 0);
+    (latestRow?.breakdown?.accounts ?? []).flatMap((a) => a.holdings)
+      .filter((h) => h.currency === "USD").reduce((s, h) => s + h.eval_krw, 0);
   const usdPct = todayTotal > 0 ? (usdTotalKrw / todayTotal) * 100 : 0;
 
-  // FIRE 달성률
+  // FIRE / 배당
   const firePct = fireTarget > 0 ? Math.min(100, (todayTotal / fireTarget) * 100) : null;
-
-  // 배당 수익률
   const totalDivKrw = dividends.reduce((s, d) => s + Number(d.amount_krw), 0);
   const divYield = todayTotal > 0 && totalDivKrw > 0 ? (totalDivKrw / todayTotal) * 100 : null;
 
-  // Top 5 보유 종목 (오늘 기준)
+  // Top 5
   const top5 = useMemo(() => {
-    if (!latestRow?.breakdown) return [];
-    const map = new Map<string, { name: string; eval_krw: number }>();
-    for (const acc of latestRow.breakdown.accounts ?? []) {
-      for (const h of acc.holdings) {
-        const key = h.ticker ?? h.raw_name;
-        const prev = map.get(key) ?? { name: h.raw_name, eval_krw: 0 };
-        map.set(key, { ...prev, eval_krw: prev.eval_krw + h.eval_krw });
-      }
-    }
-    return [...map.values()]
+    const hb = latestRow?.breakdown?.holdings_breakdown ?? {};
+    return Object.entries(hb)
+      .map(([key, v]) => ({ key, ...v }))
       .sort((a, b) => b.eval_krw - a.eval_krw)
       .slice(0, 5);
   }, [latestRow]);
@@ -244,28 +311,57 @@ export default function HistoryPage() {
 
   const hasEnoughData = rows.length >= 2;
 
-  // ── 렌더 ────────────────────────────────────────────────────────────────────
+  // ── 현재 뷰에 맞는 차트/바 렌더 ──────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-4">
-        <PageHeader latestDate={null} />
-        <div className="flex h-40 items-center justify-center text-neutral-400">불러오는 중…</div>
-      </div>
-    );
+  function renderChart() {
+    switch (view) {
+      case "total":       return <AssetTimeline data={timelineData} />;
+      case "category":    return <CategoryTrendChart data={categoryData} />;
+      case "broker":      return <GenericStackedChart data={brokerData} series={brokerSeries} />;
+      case "accountType": return <GenericStackedChart data={accountTypeData} series={accountTypeSeries} />;
+      case "account":     return <GenericStackedChart data={accountData} series={accountSeries} />;
+    }
   }
 
-  if (!rows.length) {
-    return (
-      <div className="flex flex-col gap-4">
-        <PageHeader latestDate={null} />
-        <div className="rounded-xl border border-neutral-200 bg-white px-6 py-12 text-center">
-          <p className="text-base text-neutral-500">아직 일별 스냅샷 데이터가 없어요.</p>
-          <p className="mt-1 text-sm text-neutral-400">매일 07:00 자동 저장됩니다.</p>
-        </div>
-      </div>
-    );
+  function renderBar() {
+    switch (view) {
+      case "total":       return null;
+      case "category":    return <CategoryBarToday breakdown={todayBreakdown} totalKrw={todayTotal} />;
+      case "broker":      return <GenericBarToday breakdown={todayBroker} series={brokerSeries} totalKrw={todayTotal} />;
+      case "accountType": return <GenericBarToday breakdown={todayAccountType} series={accountTypeSeries} totalKrw={todayTotal} />;
+      case "account":     return <GenericBarToday breakdown={todayAccount} series={accountSeries} totalKrw={todayTotal} />;
+    }
   }
+
+  function viewTitle() {
+    const titles: Record<ChartView, string> = {
+      total: "총 자산",
+      category: "전략별",
+      broker: "증권사별",
+      accountType: "계좌 유형별",
+      account: "계좌별",
+    };
+    return titles[view];
+  }
+
+  // ── 로딩/빈 상태 ─────────────────────────────────────────────────────────
+
+  if (loading) return (
+    <div className="flex flex-col gap-4">
+      <PageHeader latestDate={null} />
+      <div className="flex h-40 items-center justify-center text-neutral-400">불러오는 중…</div>
+    </div>
+  );
+
+  if (!rows.length) return (
+    <div className="flex flex-col gap-4">
+      <PageHeader latestDate={null} />
+      <div className="rounded-xl border border-neutral-200 bg-white px-6 py-12 text-center">
+        <p className="text-base text-neutral-500">아직 일별 스냅샷 데이터가 없어요.</p>
+        <p className="mt-1 text-sm text-neutral-400">매일 07:00 자동 저장됩니다.</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -281,7 +377,7 @@ export default function HistoryPage() {
         </div>
         {!hasEnoughData && (
           <p className="text-center text-xs text-neutral-400">
-            매일 07:00 수집됩니다 — 이틀 이상 쌓이면 변동이 표시돼요
+            매일 07:00 수집 — 이틀 이상 쌓이면 변동이 표시돼요
           </p>
         )}
       </div>
@@ -298,7 +394,6 @@ export default function HistoryPage() {
           label="USD 직접 노출"
           value={`${usdPct.toFixed(1)}%`}
           sub={fmtKRWShort(usdTotalKrw)}
-          color="text-neutral-800"
         />
         <MetricCard
           label="연간 배당 수익률"
@@ -314,7 +409,7 @@ export default function HistoryPage() {
         />
       </div>
 
-      {/* ③ FIRE 달성률 바 (설정된 경우만) */}
+      {/* ③ FIRE 진행 바 */}
       {firePct !== null && (
         <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3.5">
           <div className="flex items-center justify-between mb-2">
@@ -338,60 +433,63 @@ export default function HistoryPage() {
 
       {/* ④ 추이 차트 */}
       <div className="rounded-xl border border-neutral-200 bg-white px-4 py-4 sm:px-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex gap-1">
-            {PERIOD_LABELS.map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setPeriod(key)}
-                className={`rounded-md px-2.5 py-1 text-sm font-medium transition-colors ${
-                  period === key ? "bg-neutral-900 text-white" : "text-neutral-500 hover:bg-neutral-100"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="flex rounded-lg border border-neutral-200 p-0.5">
-            {(["total", "category"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
-                  view === v ? "bg-neutral-100 text-neutral-900" : "text-neutral-400 hover:text-neutral-700"
-                }`}
-              >
-                {v === "total" ? "총 자산" : "카테고리별"}
-              </button>
-            ))}
-          </div>
+        {/* 기간 탭 */}
+        <div className="mb-3 flex gap-1">
+          {PERIOD_LABELS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setPeriod(key)}
+              className={`rounded-md px-2.5 py-1 text-sm font-medium transition-colors ${
+                period === key ? "bg-neutral-900 text-white" : "text-neutral-500 hover:bg-neutral-100"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-        {view === "total" ? <AssetTimeline data={timelineData} /> : <CategoryTrendChart data={categoryData} />}
+
+        {/* 뷰 탭 — 한 줄에 맞게 scroll 가능 */}
+        <div className="mb-4 flex gap-1 overflow-x-auto pb-1">
+          {VIEW_LABELS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setView(key)}
+              className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                view === key
+                  ? "border-neutral-900 bg-neutral-900 text-white"
+                  : "border-neutral-200 text-neutral-500 hover:border-neutral-400"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {renderChart()}
       </div>
 
-      {/* ⑤ 전략별 현황 */}
-      <div className="rounded-xl border border-neutral-200 bg-white px-4 py-4 sm:px-5">
-        <h2 className="mb-3 text-lg font-semibold">
-          전략별 현황
-          <span className="ml-2 text-sm font-normal text-neutral-400">{latestRow?.snapshot_date} 기준</span>
-        </h2>
-        <CategoryBarToday breakdown={todayBreakdown} totalKrw={todayTotal} />
-      </div>
+      {/* ⑤ 현황 바 (총 자산 뷰 제외) */}
+      {view !== "total" && renderBar() && (
+        <div className="rounded-xl border border-neutral-200 bg-white px-4 py-4 sm:px-5">
+          <h2 className="mb-3 text-lg font-semibold">
+            {viewTitle()} 현황
+            <span className="ml-2 text-sm font-normal text-neutral-400">{latestRow?.snapshot_date} 기준</span>
+          </h2>
+          {renderBar()}
+        </div>
+      )}
 
-      {/* ⑥ 환 노출 + Top 5 (2열) */}
+      {/* ⑥ 환 노출 + Top 5 */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-
-        {/* 환 노출 */}
         <div className="rounded-xl border border-neutral-200 bg-white px-4 py-4">
           <h2 className="mb-3 text-lg font-semibold">환 노출</h2>
           <div className="flex items-center justify-between text-sm text-neutral-600 mb-1.5">
-            <span>USD 직접 보유 (해외직투)</span>
-            <span className="font-semibold tabular-nums">{usdPct.toFixed(1)}%</span>
+            <span>USD 직접 보유</span>
+            <span className="font-semibold">{usdPct.toFixed(1)}%</span>
           </div>
-          {/* USD vs KRW 바 */}
           <div className="flex h-3 w-full overflow-hidden rounded-full">
-            <div className="bg-indigo-400 transition-all" style={{ width: `${usdPct}%` }} />
-            <div className="bg-neutral-200 flex-1" />
+            <div className="bg-indigo-400" style={{ width: `${usdPct}%` }} />
+            <div className="flex-1 bg-neutral-200" />
           </div>
           <div className="mt-2 flex justify-between text-xs text-neutral-400">
             <span className="flex items-center gap-1">
@@ -403,28 +501,24 @@ export default function HistoryPage() {
               KRW {fmtKRWShort(Math.max(0, todayTotal - usdTotalKrw))}
             </span>
           </div>
-          <p className="mt-3 text-xs text-neutral-400">
-            * KRX 상장 해외 ETF(KODEX·TIGER 등)는 원화 결제이므로 KRW로 집계됩니다
-          </p>
+          <p className="mt-2 text-xs text-neutral-400">* KRX 상장 해외 ETF는 원화 결제로 KRW 집계</p>
         </div>
 
-        {/* Top 5 종목 */}
         <div className="rounded-xl border border-neutral-200 bg-white px-4 py-4">
           <h2 className="mb-3 text-lg font-semibold">Top 5 보유 종목</h2>
           {top5.length === 0 ? (
-            <p className="text-sm text-neutral-400">데이터가 없어요</p>
+            <p className="text-sm text-neutral-400">데이터 없음</p>
           ) : (
             <div className="space-y-2">
               {top5.map((item, i) => {
                 const pct = todayTotal > 0 ? (item.eval_krw / todayTotal) * 100 : 0;
-                const barPct = (item.eval_krw / top5Max) * 100;
                 return (
-                  <div key={i} className="flex items-center gap-2">
+                  <div key={item.key} className="flex items-center gap-2">
                     <span className="w-4 shrink-0 text-center text-xs font-bold text-neutral-400">{i + 1}</span>
                     <span className="w-28 shrink-0 truncate text-sm text-neutral-700">{item.name}</span>
                     <div className="flex-1 min-w-0">
                       <div className="h-1.5 overflow-hidden rounded-full bg-neutral-100">
-                        <div className="h-1.5 rounded-full bg-amber-400" style={{ width: `${barPct}%` }} />
+                        <div className="h-1.5 rounded-full bg-amber-400" style={{ width: `${(item.eval_krw / top5Max) * 100}%` }} />
                       </div>
                     </div>
                     <span className="w-10 shrink-0 text-right text-xs tabular-nums text-neutral-500">{pct.toFixed(1)}%</span>
@@ -437,11 +531,11 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      {/* ⑦ 배당 내역 (최근 12개월) */}
+      {/* ⑦ 배당 */}
       {dividends.length > 0 && (
         <div className="rounded-xl border border-neutral-200 bg-white px-4 py-4 sm:px-5">
           <h2 className="mb-1 text-lg font-semibold">연간 배당 현황</h2>
-          <p className="mb-3 text-sm text-neutral-400">최근 12개월 수령 배당금</p>
+          <p className="mb-3 text-sm text-neutral-400">최근 12개월</p>
           <MonthlyDividendBar dividends={dividends} />
           <div className="mt-3 flex items-center justify-between text-sm">
             <span className="text-neutral-500">합계</span>
@@ -459,24 +553,22 @@ export default function HistoryPage() {
   );
 }
 
-// ── 월별 배당 바 차트 ─────────────────────────────────────────────────────────
+// ── 월별 배당 바 ──────────────────────────────────────────────────────────────
 
 function MonthlyDividendBar({ dividends }: { dividends: DividendRow[] }) {
   const monthly = useMemo(() => {
     const map = new Map<string, number>();
     for (const d of dividends) {
-      const ym = d.received_at.slice(0, 7); // "YYYY-MM"
+      const ym = d.received_at.slice(0, 7);
       map.set(ym, (map.get(ym) ?? 0) + Number(d.amount_krw));
     }
-    // 최근 12개월 키 생성 (없는 달은 0)
     const result: { ym: string; label: string; amount: number }[] = [];
     for (let i = 11; i >= 0; i--) {
       const dt = new Date();
       dt.setDate(1);
       dt.setMonth(dt.getMonth() - i);
       const ym = dt.toISOString().slice(0, 7);
-      const label = `${dt.getMonth() + 1}월`;
-      result.push({ ym, label, amount: map.get(ym) ?? 0 });
+      result.push({ ym, label: `${dt.getMonth() + 1}월`, amount: map.get(ym) ?? 0 });
     }
     return result;
   }, [dividends]);
@@ -489,7 +581,7 @@ function MonthlyDividendBar({ dividends }: { dividends: DividendRow[] }) {
         <div key={ym} className="flex flex-1 flex-col items-center gap-0.5">
           <div className="flex w-full flex-col justify-end" style={{ height: "60px" }}>
             <div
-              className={`w-full rounded-sm transition-all ${amount > 0 ? "bg-amber-400" : "bg-neutral-100"}`}
+              className={`w-full rounded-sm ${amount > 0 ? "bg-amber-400" : "bg-neutral-100"}`}
               style={{ height: `${(amount / max) * 60}px` }}
               title={amount > 0 ? fmtKRWShort(amount) : "0"}
             />
