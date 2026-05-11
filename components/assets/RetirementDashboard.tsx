@@ -1189,17 +1189,17 @@ function TaxAnalysisSection({
                 note: "양도소득세 22%. 연 250만원 공제 후 초과분 과세. 손익통산 가능.",
               },
             ].map((row) => (
-              <div key={row.label} className="flex flex-col gap-1.5 py-3 first:pt-0 last:pb-0">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-base text-neutral-700 leading-tight">{row.label}</span>
-                  <div className="flex items-center gap-2 shrink-0">
+              <div key={row.label} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="flex-1 min-w-0 text-base text-neutral-700 leading-snug">{row.label}</span>
+                  <div className="shrink-0 text-right">
                     <span className={`text-base font-bold ${row.rateColor}`}>{row.rate}</span>
                     {row.tax > 0 ? (
-                      <span className={`text-sm font-semibold tabular-nums ${row.taxColor}`}>
+                      <p className={`text-sm font-semibold tabular-nums ${row.taxColor}`}>
                         ≈ {fmtKRWShort(row.tax)}
-                      </span>
+                      </p>
                     ) : (
-                      <span className="text-sm font-semibold text-emerald-600">세금 0</span>
+                      <p className="text-sm font-semibold text-emerald-600">세금 0</p>
                     )}
                   </div>
                 </div>
@@ -2058,24 +2058,35 @@ function Dashboard({
                 ]
                   .filter((b) => b.show)
                   .map((b) => (
-                    <div key={b.name} className="rounded-md bg-white border border-neutral-100 px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-xs font-bold text-neutral-500">
+                    <div key={b.name} className="rounded-md bg-white border border-neutral-100 px-3 py-2.5">
+                      <div className="flex items-start gap-2.5">
+                        {/* 우선순위 번호 */}
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-xs font-bold text-neutral-500">
                           {b.priority}
                         </span>
-                        <span className="flex-1 text-base text-neutral-700">{b.name}</span>
-                        {b.locked && (
-                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-sm font-bold text-amber-700">🔒55세+</span>
-                        )}
-                        {b.months != null && b.months > 0 && (
-                          <span className="text-sm text-neutral-400 tabular-nums">약 {b.months}개월</span>
-                        )}
-                        <span className="text-base font-semibold tabular-nums text-neutral-800">{fmtKRWShort(b.amount)}</span>
-                        <span className={`rounded px-1.5 py-0.5 text-sm font-semibold tabular-nums ${b.taxColor}`}>{b.taxLabel}</span>
+                        {/* 이름 + 서브노트 */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-base font-medium text-neutral-700">{b.name}</span>
+                            {b.locked && (
+                              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-700">🔒 55세+</span>
+                            )}
+                          </div>
+                          {b.subNote && (
+                            <p className="mt-0.5 text-sm text-neutral-400 leading-snug">{b.subNote}</p>
+                          )}
+                        </div>
+                        {/* 금액 + 세율 + 개월 (우측 고정) */}
+                        <div className="shrink-0 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className="text-base font-bold tabular-nums text-neutral-800">{fmtKRWShort(b.amount)}</span>
+                            <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${b.taxColor}`}>{b.taxLabel}</span>
+                          </div>
+                          {b.months != null && b.months > 0 && (
+                            <p className="mt-0.5 text-sm text-neutral-400 tabular-nums">약 {b.months}개월</p>
+                          )}
+                        </div>
                       </div>
-                      {b.subNote && (
-                        <p className="mt-1 pl-7 text-sm text-neutral-400">{b.subNote}</p>
-                      )}
                     </div>
                   ))}
               </div>
