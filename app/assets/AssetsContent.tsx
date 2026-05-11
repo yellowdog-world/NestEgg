@@ -10,7 +10,7 @@ import { type HoldingWithLive } from "@/components/assets/AccountCard";
 // ── 타입 ──────────────────────────────────────────────────────────────────────
 
 type EnrichedAccount = {
-  account: { id: string; type: string; broker: string; nickname: string | null };
+  account: { id: string; type: string; broker: string; nickname: string | null; principal_krw: number | null };
   capturedAt: string | null;
   holdings: HoldingWithLive[];
   totalEvalKrw: number;

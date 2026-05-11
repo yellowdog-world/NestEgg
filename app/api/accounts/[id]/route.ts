@@ -8,6 +8,7 @@ const PatchBody = z.object({
   broker: z.string().optional(),
   nickname: z.string().optional(),
   currency: z.string().optional(),
+  principal_krw: z.number().nullable().optional(),
 });
 
 async function getOwnedAccount(supabase: Awaited<ReturnType<typeof createClient>>, id: string, userId: string) {

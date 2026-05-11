@@ -52,7 +52,7 @@ export type HoldingWithLive = {
 };
 
 type Props = {
-  account: { id: string; type: string; broker: string | null; nickname: string | null };
+  account: { id: string; type: string; broker: string | null; nickname: string | null; principal_krw: number | null };
   capturedAt: string | null;
   holdings: HoldingWithLive[];
   totalEvalKrw: number;
@@ -80,6 +80,8 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
     type: account.type,
     broker: account.broker ?? "",
     nickname: account.nickname ?? "",
+    // 만원 단위로 표시 (DB는 원 단위 저장)
+    principalMan: account.principal_krw != null ? String(Math.round(account.principal_krw / 10_000)) : "",
   });
   const [acctSaving, setAcctSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -87,10 +89,14 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
   async function saveAccount() {
     setAcctSaving(true);
     try {
+      const { principalMan, ...rest } = acctForm;
       const res = await fetch(`/api/accounts/${account.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(acctForm),
+        body: JSON.stringify({
+          ...rest,
+          principal_krw: principalMan ? Math.round(Number(principalMan) * 10_000) : null,
+        }),
       });
       if (!res.ok) throw new Error("저장 실패");
       setShowAccountEdit(false);
@@ -340,6 +346,22 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                   className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
                 />
               </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium text-neutral-700">투자금</span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    value={acctForm.principalMan}
+                    onChange={(e) => setAcctForm({ ...acctForm, principalMan: e.target.value })}
+                    placeholder="실제 납입한 금액 (선택)"
+                    className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm"
+                  />
+                  <span className="shrink-0 text-sm text-neutral-500">만원</span>
+                </div>
+                <p className="text-[11px] text-neutral-400">
+                  입력 시 투자금 기준 수익률로 표시됩니다
+                </p>
+              </label>
             </div>
             <div className="mt-5 flex gap-2">
               <button
@@ -398,7 +420,12 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
           <div className="flex shrink-0 gap-1.5">
             <button
               onClick={() => {
-                setAcctForm({ type: account.type, broker: account.broker ?? "", nickname: account.nickname ?? "" });
+                setAcctForm({
+                type: account.type,
+                broker: account.broker ?? "",
+                nickname: account.nickname ?? "",
+                principalMan: account.principal_krw != null ? String(Math.round(account.principal_krw / 10_000)) : "",
+              });
                 setShowDeleteConfirm(false);
                 setShowAccountEdit(true);
               }}
@@ -417,14 +444,32 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
 
         {/* 통계 한 줄 */}
         {(() => {
-          const gain = totalEvalKrw - totalCostKrw;
-          const pct = totalCostKrw > 0 ? (gain / totalCostKrw) * 100 : null;
+          const principal = account.principal_krw;
+          const usePrincipal = principal != null && principal > 0;
+
+          // 투자금 기준 (사용자 입력)
+          const investGain = usePrincipal ? totalEvalKrw - principal : null;
+          const investPct = usePrincipal ? (investGain! / principal) * 100 : null;
+
+          // 매수금액 기준 (fallback)
+          const costGain = totalEvalKrw - totalCostKrw;
+          const costPct = totalCostKrw > 0 ? (costGain / totalCostKrw) * 100 : null;
+
+          const gain = usePrincipal ? investGain! : costGain;
+          const pct = usePrincipal ? investPct : costPct;
+          const baseKrw = usePrincipal ? principal : totalCostKrw;
           const pos = gain >= 0;
+
           return (
             <div className="mt-2 flex items-baseline gap-x-1.5 text-base tabular-nums overflow-hidden">
-              {totalCostKrw > 0 && (
+              {baseKrw > 0 && (
                 <>
-                  <span className="shrink-0 font-medium text-neutral-500 whitespace-nowrap">{fmtShort(totalCostKrw)}</span>
+                  <div className="flex shrink-0 items-baseline gap-x-1 whitespace-nowrap">
+                    {usePrincipal && (
+                      <span className="text-xs font-medium text-neutral-400">투자금</span>
+                    )}
+                    <span className="font-medium text-neutral-500">{fmtShort(baseKrw)}</span>
+                  </div>
                   <span className="shrink-0 text-neutral-300">→</span>
                 </>
               )}
