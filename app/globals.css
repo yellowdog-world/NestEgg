@@ -31,6 +31,27 @@ body {
   position: relative; /* iOS Safari 가로 바운스 방지 */
 }
 
+/* range input 터치 핸들 크기 — 모바일 40세+ 손가락 접근성 */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f59e0b;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f59e0b;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+}
+
 /* 브라우저 다크모드 강제 적용 차단 */
 @media (prefers-color-scheme: dark) {
   html, body {

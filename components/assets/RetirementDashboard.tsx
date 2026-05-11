@@ -866,7 +866,7 @@ function RetirementProjectionChart({
   events?: ChartEvent[];
 }) {
   return (
-    <section className="rounded-xl border border-neutral-200 bg-white p-5">
+    <section className="rounded-xl border border-neutral-200 bg-white px-3 py-4 sm:p-5">
       <div className="mb-1 flex items-baseline justify-between">
         <h2 className="text-base font-medium uppercase tracking-wide text-neutral-500">
           연도별 자산 추이
@@ -883,7 +883,7 @@ function RetirementProjectionChart({
       </div>
       <div className="h-56 min-w-0">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 4, right: 52, left: 0, bottom: 0 }}>
+          <ComposedChart data={data} margin={{ top: 4, right: 46, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="assetGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
@@ -1435,16 +1435,16 @@ function SliderPanel({
       <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-neutral-500">
         파라미터 조정
       </h2>
-      <div className="grid grid-cols-3 gap-x-4 gap-y-3">
+      <div className="grid grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-3">
         {SLIDERS.map((s) => {
           const value = profile[s.key] as number;
           const effectiveMin = s.key === "retirementAge" ? profile.currentAge : s.min;
           const pct = Math.max(0, Math.min(100, ((value - effectiveMin) / (s.max - effectiveMin)) * 100));
           return (
-            <div key={s.key} className="flex flex-col gap-1">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-neutral-500">{s.label}</span>
-                <span className="font-semibold tabular-nums text-neutral-900">
+            <div key={s.key} className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-neutral-500">{s.label}</span>
+                <span className="text-base font-semibold tabular-nums text-neutral-900">
                   {s.format(value)}
                 </span>
               </div>
@@ -1461,7 +1461,7 @@ function SliderPanel({
                 }}
                 className="w-full cursor-pointer appearance-none rounded-full accent-amber-500"
                 style={{
-                  height: "4px",
+                  height: "6px",
                   backgroundImage: `linear-gradient(to right, #f59e0b ${pct}%, #e5e7eb ${pct}%)`,
                 }}
               />
