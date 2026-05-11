@@ -6,7 +6,7 @@ import { BookOpen, Calculator, Wallet, Home, PiggyBank } from "lucide-react";
 
 const sections = [
   { href: "/", label: "홈", icon: Home, exact: true },
-  { href: "/wiki", label: "위키", icon: BookOpen },
+  { href: "/wiki", label: "정보", icon: BookOpen },
   { href: "/sim", label: "시뮬레이터", icon: Calculator },
   {
     href: "/assets",
@@ -15,7 +15,7 @@ const sections = [
     exact: true,
     children: [
       { href: "/assets", label: "내 자산", exact: true },
-      { href: "/assets/retirement", label: "은퇴 자산", icon: PiggyBank },
+      { href: "/assets/retirement", label: "은퇴시뮬", icon: PiggyBank },
     ],
   },
 ];

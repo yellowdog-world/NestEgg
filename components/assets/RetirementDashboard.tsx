@@ -866,7 +866,7 @@ function RetirementProjectionChart({
   events?: ChartEvent[];
 }) {
   return (
-    <section className="rounded-xl border border-neutral-200 bg-white px-3 py-4 sm:p-5">
+    <section className="rounded-xl border border-neutral-200 bg-white px-1 py-4 sm:p-5">
       <div className="mb-1 flex items-baseline justify-between">
         <h2 className="text-base font-medium uppercase tracking-wide text-neutral-500">
           연도별 자산 추이
@@ -883,7 +883,7 @@ function RetirementProjectionChart({
       </div>
       <div className="h-56 min-w-0">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 4, right: 46, left: 0, bottom: 0 }}>
+          <ComposedChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="assetGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
@@ -914,7 +914,7 @@ function RetirementProjectionChart({
               tick={{ fontSize: 10, fill: "#9ca3af" }}
               tickLine={false}
               axisLine={false}
-              width={46}
+              width={36}
             />
             <RechartsTooltip content={<ProjectionTooltip />} />
             <Area

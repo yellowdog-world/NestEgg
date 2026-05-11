@@ -6,10 +6,10 @@ import { Home, BookOpen, Calculator, Wallet, PiggyBank } from "lucide-react";
 
 const sections = [
   { href: "/", label: "홈", icon: Home, exact: true },
-  { href: "/wiki", label: "위키", icon: BookOpen },
+  { href: "/wiki", label: "정보", icon: BookOpen },
   { href: "/sim", label: "시뮬", icon: Calculator },
   { href: "/assets", label: "자산", icon: Wallet, exact: true },
-  { href: "/assets/retirement", label: "은퇴", icon: PiggyBank },
+  { href: "/assets/retirement", label: "은퇴시뮬", icon: PiggyBank },
 ];
 
 export function MobileNav() {
