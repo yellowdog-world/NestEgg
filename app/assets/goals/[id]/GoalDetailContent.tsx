@@ -616,8 +616,29 @@ function HoldingsTable({
               </span>
             </div>
 
-            {/* ── 오른쪽: 종목 행 (브로커 정보 인라인) ── */}
+            {/* ── 오른쪽: 요약 + 종목 행 ── */}
             <div className="flex-1 overflow-hidden">
+              {/* 요약 행 — 항상 표시 */}
+              <div className="flex items-center justify-between px-3 py-3">
+                <span className="text-sm font-semibold text-neutral-700">
+                  {ACCOUNT_TYPE_LABEL[accountType] ?? accountType}
+                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-bold tabular-nums text-neutral-900">
+                    {fmtKRWShort(typeTotal)}
+                  </span>
+                  <span className={`text-sm tabular-nums font-medium ${typePnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                    {typePnl >= 0 ? "+" : ""}{fmtKRWShort(typePnl)}
+                    {typeCost > 0 && (
+                      <span className="ml-1 text-xs opacity-70">
+                        ({typePnl >= 0 ? "+" : ""}{((typePnl / typeCost) * 100).toFixed(2)}%)
+                      </span>
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* 종목 행 — 넓은 화면에서만 표시 */}
               {brokerGroups.flatMap((group) =>
                 group.holdings.map((h, i) => {
                   const pnl    = h.eval_krw - h.cost_krw;
@@ -625,13 +646,13 @@ function HoldingsTable({
                   return (
                     <div
                       key={`${group.broker}-${h.ticker}-${i}`}
-                      className="flex items-center gap-3 border-b border-neutral-100 px-3 py-2.5 last:border-b-0"
+                      className="hidden md:flex items-center gap-3 border-t border-neutral-100 px-3 py-2.5"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-neutral-800">{h.raw_name}</p>
                         <p className="text-xs text-neutral-400">
                           {group.broker && (
-                            <span className="mr-1.5 text-neutral-400">{group.broker} ·</span>
+                            <span className="mr-1.5">{group.broker} ·</span>
                           )}
                           {h.ticker}
                           {h.qty > 0 && (
