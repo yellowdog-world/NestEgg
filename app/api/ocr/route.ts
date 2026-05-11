@@ -2,8 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { extractHoldingsFromImage } from "@/lib/ocr/claude";
-import { resolveSecurity } from "@/lib/market/resolve-security";
 import { lookupByTicker, deriveTickerInfo } from "@/lib/market/ticker-map";
+import { resolveTickerByPrice } from "@/lib/market/resolve-security";
 import { fetchNaverName, fetchYahooName } from "@/lib/market/external-apis";
 import { fetchPriceMap, fetchUsdKrwRate } from "@/lib/market/price";
 
@@ -242,7 +242,18 @@ export async function POST(request: NextRequest) {
     ocr.data.notes = ocr.data.notes ? `${ocr.data.notes} | ${warning}` : warning;
   }
 
+  // ── 티커 보강: 정적 맵 → DB 이름 조회 → 현재가 기반 최근접 후보 선택 ──────────────
+  await Promise.all(
+    ocr.data.holdings.map(async (h) => {
+      if (!h.ticker) {
+        const resolved = await resolveTickerByPrice(supabase, h.raw_name, h.market_price);
+        if (resolved) h.ticker = resolved;
+      }
+    }),
+  );
+
   // snapshots insert (status=draft)
+  // holdings는 DB에 즉시 삽입하지 않고 ocr_raw에 보존 → confirm 시점에만 DB 저장
   const finalCapturedAt = capturedAt ?? new Date().toISOString();
   const { data: snapshot, error: snapErr } = await supabase
     .from("snapshots")
@@ -252,7 +263,15 @@ export async function POST(request: NextRequest) {
       captured_at: finalCapturedAt,
       source: "ocr",
       image_path: imagePath,
-      ocr_raw: { ...(ocr.raw as object), notes: ocr.data.notes, confidence: ocr.data.confidence },
+      ocr_raw: {
+        ...(ocr.raw as object),
+        notes: ocr.data.notes,
+        confidence: ocr.data.confidence,
+        // 사후교정이 완료된 holdings — confirm 페이지에서 초기값으로 사용
+        processed_holdings: ocr.data.holdings,
+        cash_balance: ocr.data.cash_balance ?? null,
+        cash_currency: ocr.data.cash_currency ?? null,
+      },
       ocr_model: ocr.model,
       status: "draft",
       total_eval: ocr.data.total_eval_amount,
@@ -261,48 +280,6 @@ export async function POST(request: NextRequest) {
     .single();
   if (snapErr || !snapshot) {
     return NextResponse.json({ error: "insert_snapshot_failed", detail: snapErr?.message }, { status: 500 });
-  }
-
-  // holdings insert — securities 매핑 포함
-  if (ocr.data.holdings.length) {
-    const rows = await Promise.all(
-      ocr.data.holdings.map(async (h) => {
-        const sec = await resolveSecurity(supabase, h.raw_name, h.ticker);
-        return {
-          snapshot_id: snapshot.id,
-          raw_name: h.raw_name,
-          quantity: h.quantity,
-          avg_price: h.avg_price,
-          market_price: h.market_price,
-          eval_amount: h.eval_amount,
-          profit_loss: h.profit_loss,
-          currency: h.currency,
-          security_ticker: sec?.ticker ?? null,
-          security_market: sec?.market ?? null,
-        };
-      }),
-    );
-    const { error: hErr } = await supabase.from("holdings").insert(rows);
-    if (hErr) {
-      return NextResponse.json({ error: "insert_holdings_failed", detail: hErr.message }, { status: 500 });
-    }
-  }
-
-  // 예수금 holding 삽입
-  if (ocr.data.cash_balance && ocr.data.cash_balance > 0) {
-    const cashCurrency = ocr.data.cash_currency ?? "KRW";
-    await supabase.from("holdings").insert({
-      snapshot_id: snapshot.id,
-      raw_name: cashCurrency === "USD" ? "USD 예수금" : "예수금",
-      quantity: 1,
-      avg_price: ocr.data.cash_balance,
-      eval_amount: ocr.data.cash_balance,
-      market_price: null,
-      profit_loss: null,
-      currency: cashCurrency,
-      security_ticker: null,
-      security_market: null,
-    });
   }
 
   return NextResponse.json({
