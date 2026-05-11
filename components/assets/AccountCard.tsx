@@ -421,25 +421,23 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
           const pct = totalCostKrw > 0 ? (gain / totalCostKrw) * 100 : null;
           const pos = gain >= 0;
           return (
-            <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-base tabular-nums">
+            <div className="mt-2 flex items-baseline gap-x-1.5 text-base tabular-nums overflow-hidden">
               {totalCostKrw > 0 && (
                 <>
-                  <span className="text-neutral-400">원금</span>
-                  <span className="font-semibold text-neutral-700">{fmtKRWShort(totalCostKrw)}</span>
-                  <span className="text-neutral-300">·</span>
+                  <span className="shrink-0 font-medium text-neutral-500 whitespace-nowrap">{fmtShort(totalCostKrw)}</span>
+                  <span className="shrink-0 text-neutral-300">→</span>
                 </>
               )}
-              <span className="text-neutral-400">평가금</span>
-              <span className="font-semibold text-neutral-900">
-                {totalEvalKrw > 0 ? fmtKRWShort(totalEvalKrw) : "—"}
+              <span className="shrink-0 font-semibold text-neutral-900 whitespace-nowrap">
+                {totalEvalKrw > 0 ? fmtShort(totalEvalKrw) : "—"}
               </span>
               {pct !== null && totalEvalKrw > 0 && (
                 <>
-                  <span className="text-neutral-300">·</span>
-                  <span className={pos ? "text-red-400" : "text-blue-400"}>
-                    {pos ? "+" : ""}{fmtKRWShort(gain)}
+                  <span className="shrink-0 text-neutral-300">·</span>
+                  <span className={`shrink-0 whitespace-nowrap ${pos ? "text-red-400" : "text-blue-400"}`}>
+                    {pos ? "+" : ""}{fmtShort(gain)}
                   </span>
-                  <span className={`font-semibold ${pos ? "text-red-500" : "text-blue-500"}`}>
+                  <span className={`shrink-0 font-semibold whitespace-nowrap ${pos ? "text-red-500" : "text-blue-500"}`}>
                     {pos ? "+" : ""}{pct.toFixed(1)}%
                   </span>
                 </>
