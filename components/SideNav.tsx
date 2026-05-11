@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Calculator, Wallet, Home, PiggyBank } from "lucide-react";
+import { BookOpen, Calculator, Wallet, Home, PiggyBank, TrendingUp } from "lucide-react";
 
 const sections = [
   { href: "/", label: "홈", icon: Home, exact: true },
@@ -15,6 +15,7 @@ const sections = [
     exact: true,
     children: [
       { href: "/assets", label: "내 자산", exact: true },
+      { href: "/assets/history", label: "자산 추이", icon: TrendingUp },
       { href: "/assets/retirement", label: "은퇴시뮬", icon: PiggyBank },
     ],
   },

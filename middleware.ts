@@ -12,6 +12,6 @@ export const config = {
      * - _next/static, _next/image (asset files)
      * - favicon.ico, icons/* (PWA assets)
      */
-    "/((?!_next/static|_next/image|favicon.ico|icons).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icons|api/cron).*)",
   ],
 };
