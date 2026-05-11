@@ -626,11 +626,14 @@ function HoldingsTable({
         })}
       </div>
 
-      {/* ── 데스크톱: 왼쪽 레이블 + 종목 상세 ── */}
+      {/* ── 데스크톱: 왼쪽 레이블 + 종목 상세 + 오른쪽 요약 ── */}
       <div className="hidden md:block">
         {sortedTypes.map((accountType) => {
           const brokerGroups = byType.get(accountType)!;
-          const bgCls = ACCOUNT_TYPE_BG[accountType] ?? "bg-neutral-50";
+          const typeTotal = brokerGroups.reduce((s, g) => s + g.group_total, 0);
+          const typeCost  = brokerGroups.reduce((s, g) => s + g.group_cost, 0);
+          const typePnl   = typeTotal - typeCost;
+          const bgCls     = ACCOUNT_TYPE_BG[accountType] ?? "bg-neutral-50";
 
           return (
             <div key={accountType} className="flex border-t border-neutral-200 first:border-t-0">
@@ -682,6 +685,24 @@ function HoldingsTable({
                       </div>
                     );
                   })
+                )}
+              </div>
+
+              {/* 오른쪽 요약 칼럼 — 섹션 전체 높이 차지 */}
+              <div className={`flex w-36 shrink-0 flex-col items-end justify-center gap-0.5 border-l border-neutral-200 px-4 py-3 ${bgCls}`}>
+                <p className="text-[11px] font-bold tracking-wide text-neutral-500">
+                  {ACCOUNT_TYPE_LABEL[accountType] ?? accountType}
+                </p>
+                <p className="text-sm font-bold tabular-nums text-neutral-900">
+                  {fmtKRWShort(typeTotal)}
+                </p>
+                <p className={`text-xs tabular-nums font-medium ${typePnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                  {typePnl >= 0 ? "+" : ""}{fmtKRWShort(typePnl)}
+                </p>
+                {typeCost > 0 && (
+                  <p className={`text-xs tabular-nums ${typePnl >= 0 ? "text-emerald-500" : "text-red-400"}`}>
+                    ({typePnl >= 0 ? "+" : ""}{((typePnl / typeCost) * 100).toFixed(2)}%)
+                  </p>
                 )}
               </div>
             </div>
