@@ -9,6 +9,7 @@ import { lookupTicker } from "@/lib/market/ticker-map";
 import { fetchDividendHistoryBatch, inferDividendType } from "@/lib/market/dividends";
 
 export const dynamic = "force-dynamic";
+export const preferredRegion = "icn1";
 
 export default async function AssetsPage() {
   const supabase = await createClient();

@@ -4,6 +4,7 @@ import { fetchPriceMap } from "@/lib/market/price";
 import { DividendAddForm } from "@/components/assets/DividendAddForm";
 
 export const dynamic = "force-dynamic";
+export const preferredRegion = "icn1";
 
 export default async function DividendAddPage() {
   const supabase = await createClient();

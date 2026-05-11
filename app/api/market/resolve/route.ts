@@ -1,3 +1,4 @@
+export const preferredRegion = "icn1";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { lookupByTicker, deriveTickerInfo } from "@/lib/market/ticker-map";

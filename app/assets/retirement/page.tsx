@@ -6,6 +6,7 @@ import { fetchDividendHistoryBatch } from "@/lib/market/dividends";
 import { RetirementDashboard } from "@/components/assets/RetirementDashboard";
 
 export const dynamic = "force-dynamic";
+export const preferredRegion = "icn1";
 
 export default async function RetirementPage() {
   const supabase = await createClient();

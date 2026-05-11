@@ -1,3 +1,4 @@
+export const preferredRegion = "icn1";
 import { NextResponse, type NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
