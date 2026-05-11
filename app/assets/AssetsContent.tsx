@@ -85,9 +85,10 @@ function AssetsContentSkeleton() {
 
 export function AssetsContent() {
   const { data, isLoading, error } = useSWR<AssetsData>("/api/assets/data", fetcher, {
+    revalidateOnMount: true,           // 마운트 시 항상 재검증 (종목 추가 후 복귀 시 최신 데이터 반영)
     revalidateOnFocus: false,          // 탭 전환 시 재조회 안 함
     dedupingInterval: 60 * 1000,       // 1분 내 중복 요청 방지
-    keepPreviousData: true,            // 재검증 중에도 이전 데이터 표시
+    keepPreviousData: true,            // 재검증 중에도 이전 데이터 즉시 표시 (깜빡임 없음)
   });
 
   if (isLoading || (!data && !error)) return <AssetsContentSkeleton />;
