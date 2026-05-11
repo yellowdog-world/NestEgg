@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { fmtKRW, fmtKRWShort } from "@/lib/utils/format";
+import { computeDepletion } from "@/simulators/depletion/deterministic";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -12,6 +13,7 @@ export type PortfolioData = {
   cashKrw: number;
   monthlyDivKrw: number;
   usdKrw: number;
+  avgReturnPct: number | null;
 };
 
 type RetirementProfile = {
@@ -25,6 +27,8 @@ type RetirementProfile = {
   realEstateAddress: string;
   nationalPensionMonthly: number;
   privatePensionYearly: number;
+  expectedReturn: number;
+  inflation: number;
 };
 
 const STORAGE_KEY = "retirement-profile";
@@ -40,6 +44,8 @@ const DEFAULT: RetirementProfile = {
   realEstateAddress: "",
   nationalPensionMonthly: 0,
   privatePensionYearly: 0,
+  expectedReturn: 0.05,
+  inflation: 0.031,
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -80,12 +86,14 @@ function toManWon(n: number): string {
 
 function SetupWizard({
   onComplete,
+  portfolioData,
 }: {
   onComplete: (p: RetirementProfile) => void;
+  portfolioData: PortfolioData;
 }) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<RetirementProfile>(DEFAULT);
-  const total = 4;
+  const total = 5;
 
   function next() {
     if (step < total - 1) setStep((s) => s + 1);
@@ -113,7 +121,7 @@ function SetupWizard({
       <div className="flex flex-col gap-1">
         <div className="flex justify-between text-xs text-neutral-400">
           <span>{step + 1}단계 / {total}단계</span>
-          <span>{["기본 정보", "생활비 계획", "부동산 자산", "연금 계획"][step]}</span>
+          <span>{["기본 정보", "생활비 계획", "부동산 자산", "연금 계획", "수익률 설정"][step]}</span>
         </div>
         <div className="h-1.5 rounded-full bg-neutral-100">
           <div
@@ -149,6 +157,13 @@ function SetupWizard({
             onChange={(k, v) => setForm((f) => ({ ...f, [k]: v }))}
           />
         )}
+        {step === 4 && (
+          <Step5
+            form={form}
+            onChange={(k, v) => setForm((f) => ({ ...f, [k]: v }))}
+            portfolioData={portfolioData}
+          />
+        )}
       </div>
 
       <div className="flex gap-3">
@@ -166,6 +181,244 @@ function SetupWizard({
         >
           {step < total - 1 ? "다음" : "대시보드 보기"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+const RETURN_EXAMPLES = [
+  {
+    label: "S&P 500",
+    value: 0.116,
+    desc: "미국 대형주 500개 지수. 장기 분산투자 대표 지수.",
+    yearly: [
+      { year: 2021, rate: 0.287 },
+      { year: 2022, rate: -0.181 },
+      { year: 2023, rate: 0.263 },
+      { year: 2024, rate: 0.233 },
+      { year: 2025, rate: -0.022 },
+    ],
+  },
+  {
+    label: "나스닥 100",
+    value: 0.142,
+    desc: "미국 기술·성장주 100개 지수. 높은 성장성, 변동성도 큰 편.",
+    yearly: [
+      { year: 2021, rate: 0.275 },
+      { year: 2022, rate: -0.326 },
+      { year: 2023, rate: 0.549 },
+      { year: 2024, rate: 0.256 },
+      { year: 2025, rate: -0.045 },
+    ],
+  },
+  {
+    label: "코스피",
+    value: -0.035,
+    desc: "한국 종합주가지수. 국내 대형주 중심.",
+    yearly: [
+      { year: 2021, rate: 0.036 },
+      { year: 2022, rate: -0.249 },
+      { year: 2023, rate: 0.187 },
+      { year: 2024, rate: -0.096 },
+      { year: 2025, rate: -0.053 },
+    ],
+  },
+];
+
+const INFLATION_DATA = [
+  { year: 2021, rate: 0.025 },
+  { year: 2022, rate: 0.051 },
+  { year: 2023, rate: 0.036 },
+  { year: 2024, rate: 0.023 },
+  { year: 2025, rate: 0.020 },
+];
+const INFLATION_AVG = 0.031; // 5년 평균 (2021~2025)
+
+function RateChip({ rate }: { rate: number }) {
+  const pos = rate >= 0;
+  return (
+    <span className={`tabular-nums font-medium ${pos ? "text-emerald-600" : "text-red-500"}`}>
+      {pos ? "+" : ""}{(rate * 100).toFixed(1)}%
+    </span>
+  );
+}
+
+function ReturnRatePicker({
+  value,
+  onChange,
+  avgReturnPct,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  avgReturnPct: number | null;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const portfolioOption = avgReturnPct !== null
+    ? { label: "내 포트폴리오", value: avgReturnPct / 100, desc: "현재 앱에 등록된 종목 기준 가중 평균 수익률. 과거 실현 수익률로 미래를 보장하지 않습니다.", yearly: null }
+    : null;
+
+  const allOptions = [...RETURN_EXAMPLES, ...(portfolioOption ? [portfolioOption] : [])];
+
+  return (
+    <div className="flex flex-col gap-2">
+      {/* 1줄 버튼 */}
+      <div className="flex gap-1.5 flex-wrap">
+        {allOptions.map((ex) => {
+          const active = Math.abs(value - ex.value) < 0.0001;
+          return (
+            <button
+              key={ex.label}
+              onClick={() => onChange(ex.value)}
+              className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+                active
+                  ? "border-amber-500 bg-amber-50 text-amber-700"
+                  : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+              }`}
+            >
+              <span>{ex.label}</span>
+              <span className={active ? "text-amber-600" : "text-neutral-400"}>
+                {ex.value >= 0 ? "+" : ""}{(ex.value * 100).toFixed(1)}%
+              </span>
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="ml-auto flex items-center gap-0.5 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50"
+        >
+          추가 설명 {open ? "▲" : "▼"}
+        </button>
+      </div>
+
+      {/* 펼치기 설명 */}
+      {open && (
+        <div className="rounded-lg bg-neutral-50 p-4 flex flex-col gap-4">
+          {allOptions.map((ex) => (
+            <div key={ex.label} className="flex flex-col gap-2">
+              <div className="flex items-baseline gap-2">
+                <span className="text-sm font-semibold text-neutral-800">{ex.label}</span>
+                <span className="text-xs text-neutral-500">{ex.desc}</span>
+              </div>
+              {ex.yearly ? (
+                <div className="grid grid-cols-6 gap-2">
+                  {ex.yearly.map((y) => (
+                    <div key={y.year} className="flex flex-col items-center gap-0.5">
+                      <span className="text-xs text-neutral-400">{y.year}</span>
+                      <span className={`text-sm font-semibold tabular-nums ${y.rate >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                        {y.rate >= 0 ? "+" : ""}{(y.rate * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-xs text-neutral-400">5년 평균</span>
+                    <span className={`text-sm font-bold tabular-nums ${ex.value >= 0 ? "text-amber-600" : "text-red-500"}`}>
+                      {ex.value >= 0 ? "+" : ""}{(ex.value * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-neutral-500">현재 앱 등록 종목 기준 — 연도별 수익률 데이터 없음</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 직접 입력 */}
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min={0}
+          max={50}
+          step={0.1}
+          value={(value * 100).toFixed(1)}
+          onChange={(e) => {
+            const n = parseFloat(e.target.value);
+            if (!isNaN(n)) onChange(n / 100);
+          }}
+          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
+        />
+        <span className="shrink-0 text-xs text-neutral-500">%</span>
+      </div>
+      <p className="text-xs text-neutral-400">분산투자 기준 일반적으로 6~8%를 많이 사용합니다.</p>
+    </div>
+  );
+}
+
+function InflationPicker({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-2">
+      {/* 현재값 + 펼치기 버튼 */}
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => onChange(INFLATION_AVG)}
+          className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+            Math.abs(value - INFLATION_AVG) < 0.0001
+              ? "border-amber-500 bg-amber-50 text-amber-700"
+              : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+          }`}
+        >
+          <span>🇰🇷 한국 5년 평균 (2021~2025)</span>
+          <span className={Math.abs(value - INFLATION_AVG) < 0.0001 ? "text-amber-600" : "text-neutral-400"}>
+            +{(INFLATION_AVG * 100).toFixed(1)}%
+          </span>
+        </button>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="ml-auto flex items-center gap-0.5 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50"
+        >
+          추가 설명 {open ? "▲" : "▼"}
+        </button>
+      </div>
+
+      {/* 펼치기 설명 */}
+      {open && (
+        <div className="rounded-lg bg-neutral-50 p-4 flex flex-col gap-3">
+          <p className="text-sm font-semibold text-neutral-700">🇰🇷 한국 소비자물가 상승률 (통계청)</p>
+          <div className="grid grid-cols-6 gap-2">
+            {INFLATION_DATA.map((d) => (
+              <div key={d.year} className="flex flex-col items-center gap-0.5">
+                <span className="text-xs text-neutral-400">{d.year}</span>
+                <span className={`text-sm font-semibold tabular-nums ${d.rate >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                  {d.rate >= 0 ? "+" : ""}{(d.rate * 100).toFixed(1)}%
+                </span>
+              </div>
+            ))}
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-xs text-neutral-400">5년 평균</span>
+              <span className="text-sm font-bold text-amber-600 tabular-nums">
+                +{(INFLATION_AVG * 100).toFixed(1)}%
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-neutral-500">5년 평균(2021~2025) 기준. 시뮬레이션 기본값으로 설정되어 있습니다.</p>
+        </div>
+      )}
+
+      {/* 직접 입력 */}
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min={0}
+          max={20}
+          step={0.1}
+          value={(value * 100).toFixed(1)}
+          onChange={(e) => {
+            const n = parseFloat(e.target.value);
+            if (!isNaN(n)) onChange(n / 100);
+          }}
+          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
+        />
+        <span className="shrink-0 text-xs text-neutral-500">%</span>
       </div>
     </div>
   );
@@ -398,6 +651,194 @@ function Step4({
   );
 }
 
+// ── Edit Form (설정 편집 — 전체 항목 한 페이지) ───────────────────────────────
+
+function EditForm({
+  profile,
+  portfolioData,
+  onSave,
+  onCancel,
+}: {
+  profile: RetirementProfile;
+  portfolioData: PortfolioData;
+  onSave: (p: RetirementProfile) => void;
+  onCancel: () => void;
+}) {
+  const [form, setForm] = useState<RetirementProfile>(profile);
+  const set = (k: keyof RetirementProfile, v: number | string) =>
+    setForm((f) => ({ ...f, [k]: v }));
+
+  return (
+    <div className="flex flex-col gap-5">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">설정 편집</h1>
+        <p className="mt-1 text-xs text-neutral-500">슬라이더에서 조정한 값이 반영되어 있습니다.</p>
+      </header>
+
+      {/* 기본 정보 */}
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 flex flex-col gap-4">
+        <p className="text-sm font-semibold text-neutral-700">기본 정보</p>
+        <div className="grid grid-cols-3 gap-3">
+          <FieldRow label="현재 나이">
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number" min={20} max={90} value={form.currentAge}
+                onChange={(e) => set("currentAge", Number(e.target.value))}
+                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
+              />
+              <span className="shrink-0 text-xs text-neutral-500">세</span>
+            </div>
+          </FieldRow>
+          <FieldRow label="은퇴 목표">
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number" min={form.currentAge} max={90} value={form.retirementAge}
+                onChange={(e) => set("retirementAge", Number(e.target.value))}
+                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
+              />
+              <span className="shrink-0 text-xs text-neutral-500">세</span>
+            </div>
+          </FieldRow>
+          <FieldRow label="생존 목표">
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number" min={70} max={120} value={form.targetAge}
+                onChange={(e) => set("targetAge", Number(e.target.value))}
+                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
+              />
+              <span className="shrink-0 text-xs text-neutral-500">세</span>
+            </div>
+          </FieldRow>
+        </div>
+      </section>
+
+      {/* 월 생활비 */}
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 flex flex-col gap-3">
+        <p className="text-sm font-semibold text-neutral-700">월 생활비</p>
+        <div className="grid grid-cols-3 gap-2">
+          {[{label:"186만원",value:186},{label:"280만원",value:280},{label:"400만원",value:400}].map((ex) => (
+            <button key={ex.value} onClick={() => set("monthlyBudget", ex.value * 10_000)}
+              className={`rounded-lg border py-2 text-sm font-medium transition-colors ${
+                Math.round(form.monthlyBudget / 10_000) === ex.value
+                  ? "border-amber-500 bg-amber-50 text-amber-700"
+                  : "border-neutral-200 hover:bg-neutral-50 text-neutral-700"
+              }`}>
+              {ex.label}
+            </button>
+          ))}
+        </div>
+        <ManWonInput value={form.monthlyBudget} onChange={(v) => set("monthlyBudget", v)} />
+      </section>
+
+      {/* 연금 */}
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 flex flex-col gap-4">
+        <p className="text-sm font-semibold text-neutral-700">연금</p>
+        <FieldRow label="국민연금 월 수령액">
+          <ManWonInput value={form.nationalPensionMonthly} onChange={(v) => set("nationalPensionMonthly", v)} placeholder="0" />
+        </FieldRow>
+        <FieldRow label="개인연금 / IRP 연 수령액">
+          <ManWonInput value={form.privatePensionYearly} onChange={(v) => set("privatePensionYearly", v)} placeholder="0" />
+        </FieldRow>
+      </section>
+
+      {/* 부동산 (선택) */}
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 flex flex-col gap-4">
+        <p className="text-sm font-semibold text-neutral-700">부동산 <span className="text-xs font-normal text-neutral-400">(선택)</span></p>
+        <FieldRow label="주소">
+          <input type="text" value={form.realEstateAddress}
+            onChange={(e) => set("realEstateAddress", e.target.value)}
+            placeholder="예: 서울 강남구 삼성동 000"
+            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
+          />
+        </FieldRow>
+        <div className="grid grid-cols-2 gap-3">
+          <FieldRow label="시세">
+            <ManWonInput
+              value={form.realEstateMarket}
+              onChange={(v) => setForm((f) => ({ ...f, realEstateMarket: v, realEstateValue: Math.max(0, v - f.realEstateLoan) }))}
+            />
+          </FieldRow>
+          <FieldRow label="대출 잔액">
+            <ManWonInput
+              value={form.realEstateLoan}
+              onChange={(v) => setForm((f) => ({ ...f, realEstateLoan: v, realEstateValue: Math.max(0, f.realEstateMarket - v) }))}
+            />
+          </FieldRow>
+        </div>
+      </section>
+
+      {/* 수익률 / 물가상승률 */}
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 flex flex-col gap-5">
+        <p className="text-sm font-semibold text-neutral-700">수익률 / 물가상승률</p>
+
+        <div className="flex flex-col gap-3">
+          <label className="text-sm text-neutral-600">예상 연 수익률</label>
+          <ReturnRatePicker
+            value={form.expectedReturn}
+            onChange={(v) => set("expectedReturn", v)}
+            avgReturnPct={portfolioData.avgReturnPct}
+          />
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <label className="text-sm text-neutral-600">물가상승률</label>
+          <InflationPicker
+            value={form.inflation}
+            onChange={(v) => set("inflation", v)}
+          />
+        </div>
+      </section>
+
+      {/* 버튼 */}
+      <div className="flex gap-3 pb-4">
+        <button onClick={onCancel}
+          className="flex-1 rounded-xl border border-neutral-200 py-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50">
+          취소
+        </button>
+        <button onClick={() => onSave(form)}
+          className="flex-1 rounded-xl bg-amber-500 py-3 text-sm font-semibold text-white hover:bg-amber-600 active:scale-95 transition-transform">
+          저장
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Step5({
+  form,
+  onChange,
+  portfolioData,
+}: {
+  form: RetirementProfile;
+  onChange: (k: keyof RetirementProfile, v: number) => void;
+  portfolioData: PortfolioData;
+}) {
+  return (
+    <div className="flex flex-col gap-6">
+      <p className="font-medium text-neutral-800">수익률 및 물가상승률을 설정해주세요</p>
+
+      {/* 예상 수익률 */}
+      <div className="flex flex-col gap-3">
+        <label className="text-sm font-medium text-neutral-700">예상 연 수익률</label>
+        <ReturnRatePicker
+          value={form.expectedReturn}
+          onChange={(v) => onChange("expectedReturn", v)}
+          avgReturnPct={portfolioData.avgReturnPct}
+        />
+      </div>
+
+      {/* 물가상승률 */}
+      <div className="flex flex-col gap-3">
+        <label className="text-sm font-medium text-neutral-700">물가상승률</label>
+        <InflationPicker
+          value={form.inflation}
+          onChange={(v) => onChange("inflation", v)}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 function KpiCard({
@@ -459,35 +900,40 @@ function PortfolioBar({
   );
 }
 
-function CashflowRow({
-  label,
-  amount,
-  pct,
-  accent,
-  bold,
+function CashflowSection({
+  title,
+  color,
+  total,
+  rows,
 }: {
-  label: string;
-  amount: number;
-  pct?: number;
-  accent?: "red" | "green";
-  bold?: boolean;
+  title: string;
+  color: "green" | "red";
+  total: number;
+  rows: { label: string; amount: number; pct?: number }[];
 }) {
+  const isGreen = color === "green";
   return (
-    <tr className="border-t border-neutral-100">
-      <td className={`py-2 pr-3 text-sm ${bold ? "font-semibold" : ""}`}>{label}</td>
-      <td
-        className={`py-2 pr-3 text-right text-sm tabular-nums ${bold ? "font-semibold" : ""} ${
-          accent === "red" ? "text-red-700" : accent === "green" ? "text-emerald-700" : ""
-        }`}
-      >
-        {amount >= 0 ? fmtKRW(amount) : `−${fmtKRW(Math.abs(amount))}`}
-      </td>
-      {pct != null ? (
-        <td className="py-2 text-right text-xs text-neutral-400">{pct.toFixed(0)}%</td>
-      ) : (
-        <td />
-      )}
-    </tr>
+    <div className="flex flex-col gap-0">
+      {/* 헤더: 섹션명 + 합계 */}
+      <div className="flex items-center justify-between py-1.5">
+        <span className={`text-sm font-semibold ${isGreen ? "text-emerald-700" : "text-red-700"}`}>{title}</span>
+        <span className={`text-sm font-semibold tabular-nums ${isGreen ? "text-emerald-700" : "text-red-700"}`}>
+          {fmtKRW(total)}
+        </span>
+      </div>
+      {/* 서브 항목 (들여쓰기) */}
+      {rows.map((r) => (
+        <div key={r.label} className="flex items-center justify-between py-1 pl-4">
+          <span className="text-sm text-neutral-500">{r.label}</span>
+          <div className="flex items-center gap-3">
+            {r.pct != null && (
+              <span className="text-xs text-neutral-400 tabular-nums">{r.pct.toFixed(0)}%</span>
+            )}
+            <span className="text-sm tabular-nums text-neutral-500">{fmtKRW(r.amount)}</span>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -613,6 +1059,22 @@ const SLIDERS: {
     step: 1,
     format: (v) => `${v}세`,
   },
+  {
+    key: "expectedReturn",
+    label: "예상 연 수익률",
+    min: 0,
+    max: 0.2,
+    step: 0.005,
+    format: (v) => `${(v * 100).toFixed(1)}%`,
+  },
+  {
+    key: "inflation",
+    label: "물가상승률",
+    min: 0,
+    max: 0.1,
+    step: 0.005,
+    format: (v) => `${(v * 100).toFixed(1)}%`,
+  },
 ];
 
 function SliderPanel({
@@ -692,14 +1154,27 @@ function Dashboard({
   const monthlyOutflow = profile.monthlyBudget;
   const monthlySurplus = totalMonthlyInflow - monthlyOutflow;
 
-  // 생존 기간: 투자 자산(부동산 제외) / 월 순 소진액
-  const liquidAssets = portfolioData.totalKrw;
-  const netMonthlyBurn = Math.max(0, monthlyOutflow - totalMonthlyInflow);
+  // 생존 기간: depletion 시뮬레이터로 수익률·물가 반영
+  const netYearlyWithdrawal = Math.max(0, monthlyOutflow - totalMonthlyInflow) * 12;
+  const horizonYears = Math.max(1, profile.targetAge - profile.retirementAge + 20);
+  const depletionResult = computeDepletion({
+    startAge: profile.retirementAge,
+    startAssets: portfolioData.totalKrw,
+    yearlyWithdrawal: netYearlyWithdrawal,
+    expectedReturn: profile.expectedReturn,
+    inflation: profile.inflation,
+    inflateWithdrawal: true,
+    horizonYears,
+  });
   const survivalYears: number | null =
-    netMonthlyBurn === 0 ? null : liquidAssets / (netMonthlyBurn * 12);
+    depletionResult.depletedAtAge !== null
+      ? depletionResult.depletedAtAge - profile.retirementAge
+      : null;
 
-  const targetYears = profile.targetAge - profile.currentAge;
-  const survivalOk = survivalYears === null || survivalYears >= targetYears;
+  const targetYears = profile.targetAge - profile.retirementAge;
+  const survivalOk =
+    depletionResult.depletedAtAge === null ||
+    depletionResult.depletedAtAge >= profile.targetAge;
 
   // 포트폴리오 분류
   const otherKrw = Math.max(
@@ -796,67 +1271,43 @@ function Dashboard({
         <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-neutral-500">
           월별 현금흐름 상세 (인출 전략)
         </h2>
-        <table className="w-full">
-          <thead>
-            <tr className="text-xs text-neutral-400">
-              <th className="pb-2 pr-3 text-left">구분 / 항목</th>
-              <th className="pb-2 pr-3 text-right">금액</th>
-              <th className="pb-2 text-right">비중</th>
-            </tr>
-          </thead>
-          <tbody>
-            {inflows.length > 0 ? (
-              <>
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="pt-2 pb-1 text-xs font-semibold text-emerald-700"
-                  >
-                    수입 (Inflow)
-                  </td>
-                </tr>
-                {inflows.map((r) => (
-                  <CashflowRow
-                    key={r.label}
-                    label={r.label}
-                    amount={r.amount}
-                    pct={totalMonthlyInflow > 0 ? (r.amount / totalMonthlyInflow) * 100 : 0}
-                    accent="green"
-                  />
-                ))}
-              </>
-            ) : (
-              <tr>
-                <td colSpan={3} className="py-2 text-xs text-neutral-400">
-                  수입 정보 없음 — 설정에서 연금 정보를 입력하거나 자산 탭에서 종목을 등록하세요.
-                </td>
-              </tr>
-            )}
-
-            <tr>
-              <td colSpan={3} className="pt-3 pb-1 text-xs font-semibold text-red-700">
-                지출 (Outflow)
-              </td>
-            </tr>
-            <CashflowRow
-              label="기초 생활비 및 보험료"
-              amount={monthlyOutflow}
-              accent="red"
+        <div className="flex flex-col gap-4">
+          {inflows.length > 0 ? (
+            <CashflowSection
+              title="수입"
+              color="green"
+              total={totalMonthlyInflow}
+              rows={inflows.map((r) => ({
+                label: r.label,
+                amount: r.amount,
+                pct: totalMonthlyInflow > 0 ? (r.amount / totalMonthlyInflow) * 100 : 0,
+              }))}
             />
+          ) : (
+            <p className="text-xs text-neutral-400">
+              수입 정보 없음 — 설정에서 연금 정보를 입력하거나 자산 탭에서 종목을 등록하세요.
+            </p>
+          )}
 
-            <tr>
-              <td colSpan={3} className="pt-3 pb-1 text-xs font-semibold text-neutral-600">
-                잔여 (Surplus)
-              </td>
-            </tr>
-            <CashflowRow
-              label={monthlySurplus >= 0 ? "여유 자금 (여가/재투자)" : "부족분"}
-              amount={Math.abs(monthlySurplus)}
-              accent={monthlySurplus >= 0 ? "green" : "red"}
-              bold
-            />
-          </tbody>
-        </table>
+          <CashflowSection
+            title="지출"
+            color="red"
+            total={monthlyOutflow}
+            rows={[]}
+          />
+
+          {/* 잔여 */}
+          <div className="flex items-center justify-between border-t border-neutral-200 pt-4">
+            <span className="text-sm font-medium text-neutral-500">
+              {monthlySurplus >= 0 ? "월 잉여금" : "월 부족분"}
+            </span>
+            <span className={`text-lg font-bold tabular-nums ${
+              monthlySurplus >= 0 ? "text-emerald-700" : "text-red-700"
+            }`}>
+              {monthlySurplus >= 0 ? "+" : "−"}{fmtKRWShort(Math.abs(monthlySurplus))}
+            </span>
+          </div>
+        </div>
       </section>
 
       {/* 지능형 은퇴 가이드 */}
@@ -893,13 +1344,29 @@ export function RetirementDashboard({ portfolioData }: { portfolioData: Portfoli
     );
   }
 
-  if (!profile || editing) {
+  if (!profile) {
     return (
       <SetupWizard
+        portfolioData={portfolioData}
         onComplete={(p) => {
           setProfile(p);
           setEditing(false);
         }}
+      />
+    );
+  }
+
+  if (editing) {
+    return (
+      <EditForm
+        profile={profile}
+        portfolioData={portfolioData}
+        onSave={(p) => {
+          setProfile(p);
+          saveProfile(p);
+          setEditing(false);
+        }}
+        onCancel={() => setEditing(false)}
       />
     );
   }

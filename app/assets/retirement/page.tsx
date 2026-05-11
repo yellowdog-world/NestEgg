@@ -82,6 +82,8 @@ export default async function RetirementPage() {
   let pensionKrw = 0;
   let stocksKrw = 0;
   let cashKrw = 0;
+  let totalEvalKrw = 0;
+  let totalCostKrw = 0;
   const currentQtyByTicker = new Map<string, { qty: number; name: string; market: string }>();
 
   for (const account of accounts ?? []) {
@@ -106,6 +108,13 @@ export default async function RetirementPage() {
         if (isPension) pensionKrw += evalKrw;
         else stocksKrw += evalKrw;
 
+        totalEvalKrw += evalKrw;
+        if (avgP !== null) {
+          const costKrw =
+            h.currency === "USD" ? qty * avgP * usdKrw : qty * avgP;
+          totalCostKrw += costKrw;
+        }
+
         if (info) {
           const prev = currentQtyByTicker.get(info.ticker) ?? {
             qty: 0,
@@ -118,6 +127,9 @@ export default async function RetirementPage() {
       }
     }
   }
+
+  const avgReturnPct =
+    totalCostKrw > 0 ? ((totalEvalKrw - totalCostKrw) / totalCostKrw) * 100 : null;
 
   // ── 최근 1년 배당 합계 ────────────────────────────────────────────────────
   const ONE_YEAR_AGO = new Date(Date.now() - 365 * 24 * 3600 * 1000)
@@ -150,6 +162,7 @@ export default async function RetirementPage() {
     cashKrw,
     monthlyDivKrw: Math.round(yearlyDivKrw / 12),
     usdKrw,
+    avgReturnPct,
   };
 
   return <RetirementDashboard portfolioData={portfolioData} />;
