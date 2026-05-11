@@ -31,27 +31,16 @@ export default async function RetirementPage() {
     .select("id,type,broker,nickname")
     .order("created_at", { ascending: true });
 
-  // ── 최신 confirmed 스냅샷 ─────────────────────────────────────────────────
-  const { data: snapshots } = await supabase
-    .from("snapshots")
-    .select("id,account_id,captured_at")
-    .eq("status", "confirmed")
-    .order("captured_at", { ascending: false });
+  const accountIds = (accounts ?? []).map((a) => a.id);
 
-  const latestByAccount = new Map<string, string>(); // accountId → snapshotId
-  for (const s of snapshots ?? []) {
-    if (!latestByAccount.has(s.account_id)) latestByAccount.set(s.account_id, s.id);
-  }
-  const latestSnapshotIds = [...latestByAccount.values()];
-
-  // ── 홀딩 ──────────────────────────────────────────────────────────────────
-  const { data: holdingsRaw } = latestSnapshotIds.length
+  // ── holdings: account_id 기준 (내 자산 페이지와 동일한 소스) ──────────────
+  const { data: holdingsRaw } = accountIds.length
     ? await supabase
         .from("holdings")
         .select(
-          "id,raw_name,quantity,avg_price,currency,snapshot_id,security_ticker,security_market",
+          "id,raw_name,quantity,avg_price,currency,account_id,security_ticker,security_market",
         )
-        .in("snapshot_id", latestSnapshotIds)
+        .in("account_id", accountIds)
     : { data: [] };
 
   // ── 시세 ──────────────────────────────────────────────────────────────────
@@ -73,11 +62,11 @@ export default async function RetirementPage() {
   const PENSION_TYPES = new Set(["pension_fund", "irp"]);
 
   type HoldingRow = NonNullable<typeof holdingsRaw>[number];
-  const holdingsBySnapshot = new Map<string, HoldingRow[]>();
+  const holdingsByAccount = new Map<string, HoldingRow[]>();
   for (const h of holdingsRaw ?? []) {
-    const list = holdingsBySnapshot.get(h.snapshot_id) ?? [];
+    const list = holdingsByAccount.get(h.account_id) ?? [];
     list.push(h);
-    holdingsBySnapshot.set(h.snapshot_id, list);
+    holdingsByAccount.set(h.account_id, list);
   }
 
   let pensionKrw = 0;
@@ -88,11 +77,8 @@ export default async function RetirementPage() {
   const currentQtyByTicker = new Map<string, { qty: number; name: string; market: string }>();
 
   for (const account of accounts ?? []) {
-    const snapshotId = latestByAccount.get(account.id);
-    if (!snapshotId) continue;
-
     const isPension = PENSION_TYPES.has(account.type);
-    for (const h of holdingsBySnapshot.get(snapshotId) ?? []) {
+    for (const h of holdingsByAccount.get(account.id) ?? []) {
       const info = h.security_ticker
         ? { ticker: h.security_ticker, market: h.security_market ?? "KRX" }
         : lookupTicker(h.raw_name);
