@@ -288,7 +288,7 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
       {holdings.length > 0 && (
         <div className="border-t border-neutral-100">
           <div className="divide-y divide-neutral-50">
-            {holdings.map((h) => {
+            {[...holdings].sort((a, b) => (a.isCash === b.isCash ? 0 : a.isCash ? 1 : -1)).map((h) => {
               if (editId === h.id) {
                 // 인라인 편집 행
                 return (
