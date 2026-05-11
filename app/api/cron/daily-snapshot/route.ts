@@ -4,10 +4,9 @@ import { lookupTicker } from "@/lib/market/ticker-map";
 import { aggregateByCategory } from "@/lib/market/asset-category";
 
 // Vercel Cron: 매일 22:00 UTC = 한국 07:00 KST
-// vercel.json에 설정 필요: { "crons": [{ "path": "/api/cron/daily-snapshot", "schedule": "0 22 * * *" }] }
+// vercel.json에 설정 필요: { "crons": [{ "path": "/api/cron/daily-snapshot", "schedule": "0 22 * * 1-5" }] }
 
 export async function GET(req: Request) {
-  // Vercel이 CRON_SECRET을 Authorization 헤더로 자동 전달
   const auth = req.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -21,41 +20,34 @@ export async function GET(req: Request) {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // 1. confirmed 홀딩이 있는 모든 유저 수집
-  const { data: snapshots } = await supabase
-    .from("snapshots")
-    .select("id, user_id, account_id, accounts(broker, type)")
-    .eq("status", "confirmed");
+  // ── 1. 모든 유저의 계좌 조회 ──────────────────────────────────────────────
+  const { data: accounts } = await supabase
+    .from("accounts")
+    .select("id, user_id, type, broker, nickname");
 
-  if (!snapshots?.length) return Response.json({ ok: true, processed: 0 });
+  if (!accounts?.length) return Response.json({ ok: true, processed: 0 });
 
-  // 유저별 최근 스냅샷
-  const latestByAccountByUser = new Map<string, Map<string, (typeof snapshots)[0]>>();
-  for (const s of snapshots) {
-    if (!latestByAccountByUser.has(s.user_id)) {
-      latestByAccountByUser.set(s.user_id, new Map());
-    }
-    const m = latestByAccountByUser.get(s.user_id)!;
-    if (!m.has(s.account_id)) m.set(s.account_id, s);
-  }
+  // ── 2. 계좌별 holdings 직접 조회 (account_id 기준 — assets 페이지와 동일) ─
+  const accountIds = accounts.map((a) => a.id);
 
-  // 2. 모든 스냅샷의 홀딩 조회
-  const allSnapshotIds = [...latestByAccountByUser.values()]
-    .flatMap((m) => [...m.values()])
-    .map((s) => s.id);
-
-  const { data: allHoldings } = await supabase
+  const { data: holdingsRaw } = await supabase
     .from("holdings")
-    .select("snapshot_id, raw_name, quantity, avg_price, currency, securities(ticker, market)")
-    .in("snapshot_id", allSnapshotIds);
+    .select("account_id, raw_name, quantity, avg_price, currency, security_ticker, security_market")
+    .in("account_id", accountIds);
 
-  // 3. 티커 수집 후 시세 일괄 조회
+  const holdings = holdingsRaw ?? [];
+
+  // ── 3. 티커 수집 후 시세 일괄 조회 ───────────────────────────────────────
   const tickerSet = new Map<string, { ticker: string; market: string }>();
   let hasUsd = false;
 
-  for (const h of allHoldings ?? []) {
-    const sec = h.securities as { ticker?: string; market?: string } | null;
-    const info = sec?.ticker ? { ticker: sec.ticker, market: sec.market ?? "KRX" } : lookupTicker(h.raw_name);
+  for (const h of holdings) {
+    // 예수금은 live price 불필요 (avg_price × qty 로 처리)
+    if (h.raw_name.includes("예수금")) continue;
+
+    const info = h.security_ticker
+      ? { ticker: h.security_ticker, market: h.security_market ?? "KRX" }
+      : lookupTicker(h.raw_name);
     if (info) tickerSet.set(info.ticker, info);
     if (h.currency === "USD") hasUsd = true;
   }
@@ -64,56 +56,89 @@ export async function GET(req: Request) {
   const priceMap = await fetchPriceMap([...tickerSet.values()]);
   const usdKrw = priceMap.get("USDKRW=X")?.price ?? (await fetchUsdKrwRate());
 
-  // 4. 유저별 포트폴리오 총액 계산 후 upsert
-  type HoldingRow = NonNullable<typeof allHoldings>[number];
-  const holdingsBySnapshot = new Map<string, HoldingRow[]>();
-  for (const h of allHoldings ?? []) {
-    if (!holdingsBySnapshot.has(h.snapshot_id)) holdingsBySnapshot.set(h.snapshot_id, []);
-    holdingsBySnapshot.get(h.snapshot_id)!.push(h);
+  // ── 4. holdings → account 그룹화 ─────────────────────────────────────────
+  type HRow = NonNullable<typeof holdingsRaw>[number];
+  const holdingsByAccount = new Map<string, HRow[]>();
+  for (const h of holdings) {
+    if (!holdingsByAccount.has(h.account_id)) holdingsByAccount.set(h.account_id, []);
+    holdingsByAccount.get(h.account_id)!.push(h);
+  }
+
+  // ── 5. 유저별 집계 ────────────────────────────────────────────────────────
+  const userAccountMap = new Map<string, typeof accounts>();
+  for (const a of accounts) {
+    if (!userAccountMap.has(a.user_id)) userAccountMap.set(a.user_id, []);
+    userAccountMap.get(a.user_id)!.push(a);
   }
 
   const rows = [];
-  for (const [userId, accountMap] of latestByAccountByUser) {
+
+  for (const [userId, userAccounts] of userAccountMap) {
     let totalKrw = 0;
     const accountBreakdowns = [];
 
-    for (const [, snap] of accountMap) {
-      const holdings = holdingsBySnapshot.get(snap.id) ?? [];
+    for (const acc of userAccounts) {
+      const accHoldings = holdingsByAccount.get(acc.id) ?? [];
       let accountTotal = 0;
       const holdingDetails = [];
 
-      for (const h of holdings) {
-        const sec = (Array.isArray(h.securities) ? h.securities[0] : h.securities) as { ticker?: string; market?: string } | null;
-        const info = sec?.ticker ? { ticker: sec.ticker, market: sec.market ?? "KRX" } : lookupTicker(h.raw_name);
-        const live = info ? priceMap.get(info.ticker) : null;
+      for (const h of accHoldings) {
         const qty = Number(h.quantity);
+        const avgP = h.avg_price !== null ? Number(h.avg_price) : null;
+        const isCash = h.raw_name.includes("예수금");
 
-        if (live) {
-          const evalKrw = live.currency === "USD" ? qty * live.price * usdKrw : qty * live.price;
-          accountTotal += evalKrw;
-          holdingDetails.push({
-            raw_name: h.raw_name,
-            ticker: info?.ticker ?? null,
-            market: info?.market ?? null,
-            quantity: qty,
-            price: live.price,
-            currency: live.currency,
-            eval_krw: Math.round(evalKrw),
-          });
+        let evalKrw = 0;
+
+        if (isCash) {
+          // 예수금: avg_price = 실제 잔액 (assets 페이지와 동일 처리)
+          if (avgP !== null) {
+            evalKrw = h.currency === "USD" ? qty * avgP * usdKrw : qty * avgP;
+          }
+        } else {
+          const info = h.security_ticker
+            ? { ticker: h.security_ticker, market: h.security_market ?? "KRX" }
+            : lookupTicker(h.raw_name);
+          const live = info ? priceMap.get(info.ticker) : null;
+
+          if (live) {
+            evalKrw = live.currency === "USD" ? qty * live.price * usdKrw : qty * live.price;
+          } else if (avgP !== null) {
+            // live price 없으면 avg_price로 fallback (미분류 종목 누락 방지)
+            evalKrw = h.currency === "USD" ? qty * avgP * usdKrw : qty * avgP;
+          }
         }
+
+        if (evalKrw === 0) continue;
+
+        const info = h.security_ticker
+          ? { ticker: h.security_ticker, market: h.security_market ?? "KRX" }
+          : lookupTicker(h.raw_name);
+
+        accountTotal += evalKrw;
+        holdingDetails.push({
+          raw_name: h.raw_name,
+          ticker: info?.ticker ?? null,
+          market: info?.market ?? null,
+          quantity: qty,
+          currency: h.currency,
+          eval_krw: Math.round(evalKrw),
+        });
       }
 
       totalKrw += accountTotal;
-      accountBreakdowns.push({
-        account_id: snap.account_id,
-        broker: (snap.accounts as { broker?: string } | null)?.broker,
-        type: (snap.accounts as { type?: string } | null)?.type,
-        total_krw: Math.round(accountTotal),
-        holdings: holdingDetails,
-      });
+      if (accountTotal > 0) {
+        accountBreakdowns.push({
+          account_id: acc.id,
+          broker: acc.broker,
+          type: acc.type,
+          total_krw: Math.round(accountTotal),
+          holdings: holdingDetails,
+        });
+      }
     }
 
-    // 전체 holdings 플랫하게 모아 카테고리별 집계
+    if (totalKrw === 0) continue;
+
     const allHoldingFlat = accountBreakdowns.flatMap((a) => a.holdings);
     const categoryBreakdown = aggregateByCategory(allHoldingFlat);
 
@@ -125,6 +150,8 @@ export async function GET(req: Request) {
       breakdown: { accounts: accountBreakdowns, category_breakdown: categoryBreakdown },
     });
   }
+
+  if (!rows.length) return Response.json({ ok: true, processed: 0 });
 
   const { error } = await supabase
     .from("portfolio_daily_snapshots")
