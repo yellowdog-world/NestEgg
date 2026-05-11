@@ -4,5 +4,11 @@
       "path": "/api/cron/daily-snapshot",
       "schedule": "0 22 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "app/**": {
+      "regions": ["icn1"],
+      "memory": 1024
+    }
+  }
 }
