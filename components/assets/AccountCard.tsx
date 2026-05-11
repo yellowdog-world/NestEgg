@@ -68,7 +68,9 @@ function fmtShort(n: number): string {
 export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, totalCostKrw, usdKrw }: Props) {
   const router = useRouter();
 
-  const [editId, setEditId] = useState<string | null>(null);
+  // 종목 상세 모달
+  const [detailHolding, setDetailHolding] = useState<HoldingWithLive | null>(null);
+  const [editMode, setEditMode] = useState(false);
   const [editQty, setEditQty] = useState("");
   const [editAvg, setEditAvg] = useState("");
   const [saving, setSaving] = useState(false);
@@ -114,16 +116,28 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
     }
   }
 
-  function startEdit(h: HoldingWithLive) {
-    setEditId(h.id);
+  function openDetail(h: HoldingWithLive) {
+    setDetailHolding(h);
+    setEditMode(false);
+  }
+
+  function openEdit(h: HoldingWithLive) {
+    setDetailHolding(h);
+    setEditMode(true);
     setEditQty(String(h.quantity));
     setEditAvg(h.avg_price !== null ? String(h.avg_price) : "");
   }
 
-  async function saveEdit(id: string) {
+  function closeDetail() {
+    setDetailHolding(null);
+    setEditMode(false);
+  }
+
+  async function saveEdit() {
+    if (!detailHolding) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/holdings/${id}`, {
+      const res = await fetch(`/api/holdings/${detailHolding.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -132,7 +146,7 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
         }),
       });
       if (!res.ok) throw new Error("저장 실패");
-      setEditId(null);
+      closeDetail();
       router.refresh();
     } catch {
       alert("저장에 실패했어요.");
@@ -145,6 +159,151 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
 
   return (
     <div className="flex flex-col rounded-xl border border-neutral-200 bg-white shadow-sm">
+      {/* 종목 상세 모달 */}
+      {detailHolding && (() => {
+        const h = detailHolding;
+        const isUsdMarket = h.market !== null && h.market !== "KRX";
+        const costKrw = h.avg_price !== null
+          ? isUsdMarket ? h.avg_price * h.quantity * usdKrw : h.avg_price * h.quantity
+          : null;
+        const gainKrw = costKrw !== null && h.liveEvalKrw !== null ? h.liveEvalKrw - costKrw : null;
+        const pos = (gainKrw ?? 0) >= 0;
+        const retPos = (h.liveReturnPct ?? 0) >= 0;
+        const changePos = (h.livePriceChangePercent ?? 0) >= 0;
+
+        const avgPriceStr = h.avg_price !== null
+          ? isUsdMarket
+            ? `$${h.avg_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : fmtKRW(h.avg_price)
+          : "—";
+        const livePriceStr = h.livePrice !== null
+          ? isUsdMarket
+            ? `$${h.livePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : fmtKRW(h.livePrice)
+          : "—";
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={closeDetail}>
+            <div
+              className="w-full max-w-sm rounded-t-2xl bg-white px-5 pt-4 pb-8 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* 드래그 핸들 */}
+              <div className="mb-4 flex justify-center">
+                <div className="h-1 w-10 rounded-full bg-neutral-200" />
+              </div>
+
+              {/* 종목명 + 닫기 */}
+              <div className="mb-4 flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-lg font-semibold text-neutral-900">{h.raw_name}</p>
+                  {h.ticker && (
+                    <span className="mt-0.5 inline-block rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-xs text-neutral-500">
+                      {h.ticker}
+                    </span>
+                  )}
+                </div>
+                <button onClick={closeDetail} className="shrink-0 rounded-full p-1 text-neutral-400 hover:bg-neutral-100">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {!editMode ? (
+                /* ── 상세 보기 ── */
+                <>
+                  <div className="divide-y divide-neutral-100 rounded-xl border border-neutral-100">
+                    {[
+                      { label: "보유수량", value: `${h.quantity.toLocaleString()}주` },
+                      { label: "평균단가", value: avgPriceStr },
+                      { label: "현재가", value: h.livePrice !== null ? (
+                        <span>
+                          {livePriceStr}
+                          {h.livePriceChangePercent != null && (
+                            <span className={`ml-1.5 text-xs ${changePos ? "text-red-500" : "text-blue-500"}`}>
+                              {changePos ? "▲" : "▼"}{Math.abs(h.livePriceChangePercent).toFixed(2)}%
+                            </span>
+                          )}
+                        </span>
+                      ) : "—" },
+                      { label: "원금", value: costKrw !== null ? fmtKRWShort(costKrw) : "—" },
+                      { label: "평가금", value: h.liveEvalKrw !== null ? fmtKRWShort(h.liveEvalKrw) : "—", bold: true },
+                      { label: "손익", value: gainKrw !== null ? (
+                        <span className={pos ? "text-red-500" : "text-blue-500"}>
+                          {pos ? "+" : ""}{fmtKRWShort(gainKrw)}
+                        </span>
+                      ) : "—" },
+                      { label: "수익율", value: h.liveReturnPct !== null ? (
+                        <span className={`font-semibold ${retPos ? "text-red-500" : "text-blue-500"}`}>
+                          {retPos ? "+" : ""}{h.liveReturnPct.toFixed(2)}%
+                        </span>
+                      ) : "—" },
+                    ].map(({ label, value, bold }) => (
+                      <div key={label} className="flex items-center justify-between px-4 py-2.5">
+                        <span className="text-sm text-neutral-500">{label}</span>
+                        <span className={`text-sm tabular-nums ${bold ? "font-semibold text-neutral-900" : "text-neutral-800"}`}>
+                          {value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => openEdit(h)}
+                    className="mt-4 w-full rounded-xl border border-neutral-200 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+                  >
+                    수정
+                  </button>
+                </>
+              ) : (
+                /* ── 편집 폼 ── */
+                <>
+                  <div className="flex flex-col gap-3">
+                    <label className="flex flex-col gap-1 text-sm">
+                      <span className="font-medium text-neutral-700">보유수량</span>
+                      <input
+                        type="number"
+                        value={editQty}
+                        onChange={(e) => setEditQty(e.target.value)}
+                        placeholder="수량"
+                        className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1 text-sm">
+                      <span className="font-medium text-neutral-700">
+                        평균단가{isUsdMarket ? " (USD)" : " (KRW)"}
+                      </span>
+                      <input
+                        type="number"
+                        value={editAvg}
+                        onChange={(e) => setEditAvg(e.target.value)}
+                        placeholder="평단가"
+                        className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={saveEdit}
+                      disabled={saving}
+                      className="flex-1 rounded-xl bg-neutral-900 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      {saving ? "저장 중…" : "저장"}
+                    </button>
+                    <button
+                      onClick={() => setEditMode(false)}
+                      className="rounded-xl border border-neutral-200 px-5 py-2.5 text-sm text-neutral-600"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 계좌 편집 모달 */}
       {showAccountEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -290,106 +449,48 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
         })()}
       </div>
 
-      {/* 종목 목록 */}
+      {/* 종목 목록 — 3컬럼 (보유수·평가·수익율) */}
       {holdings.length > 0 && (
         <div className="border-t border-neutral-100">
           {/* 컬럼 헤더 */}
-          <div className="flex items-center gap-x-1 px-4 py-1.5 border-b border-neutral-50 text-[10px] text-neutral-400">
+          <div className="flex items-center gap-x-2 px-4 py-1.5 border-b border-neutral-50 text-[10px] text-neutral-400">
             <span className="flex-1 min-w-0">종목명</span>
-            <span className="w-8 shrink-0 text-right">보유수</span>
-            <span className="w-9 shrink-0 text-right">원금</span>
-            <span className="w-9 shrink-0 text-right">평가</span>
-            <span className="w-[46px] shrink-0 text-right">손익</span>
+            <span className="w-10 shrink-0 text-right">보유수</span>
+            <span className="w-14 shrink-0 text-right">평가</span>
             <span className="w-[52px] shrink-0 text-right">수익율</span>
           </div>
 
           <div className="divide-y divide-neutral-50">
             {[...holdings].sort((a, b) => (a.isCash === b.isCash ? 0 : a.isCash ? 1 : -1)).map((h) => {
-              if (editId === h.id) {
-                // 인라인 편집 행
-                return (
-                  <div key={h.id} className="grid grid-cols-[1fr_auto_auto] gap-x-3 items-center px-4 py-3 bg-blue-50">
-                    <div className="text-sm font-medium text-neutral-700">{h.raw_name}</div>
-                    <div className="flex flex-col gap-1 w-14">
-                      <input
-                        type="number"
-                        value={editQty}
-                        onChange={(e) => setEditQty(e.target.value)}
-                        placeholder="수량"
-                        className="w-full rounded border border-blue-300 px-1.5 py-1 text-right text-xs"
-                      />
-                      <input
-                        type="number"
-                        value={editAvg}
-                        onChange={(e) => setEditAvg(e.target.value)}
-                        placeholder="평단"
-                        className="w-full rounded border border-blue-300 px-1.5 py-1 text-right text-xs"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1 w-24 items-end">
-                      <button
-                        onClick={() => saveEdit(h.id)}
-                        disabled={saving}
-                        className="rounded bg-blue-600 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50"
-                      >
-                        저장
-                      </button>
-                      <button
-                        onClick={() => setEditId(null)}
-                        className="rounded border border-neutral-300 px-2.5 py-1 text-xs text-neutral-500"
-                      >
-                        취소
-                      </button>
-                    </div>
-                  </div>
-                );
-              }
-
               if (h.isCash) {
-                // 예수금 행 — 컬럼 헤더에 맞춰 정렬 (손익·수익율 칸은 비움)
-                const balanceStr =
-                  h.avg_price !== null
-                    ? h.currency === "USD"
-                      ? `$${h.avg_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
-                      : fmtKRW(h.avg_price)
-                    : "—";
+                const balanceStr = h.avg_price !== null
+                  ? h.currency === "USD"
+                    ? `$${h.avg_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                    : fmtKRW(h.avg_price)
+                  : "—";
                 return (
-                  <div key={h.id} className="flex items-center gap-x-1 px-4 py-2 bg-neutral-50/60 text-xs tabular-nums">
+                  <div key={h.id} className="flex items-center gap-x-2 px-4 py-2 bg-neutral-50/60 text-xs tabular-nums">
                     <span className="flex-1 min-w-0 truncate text-neutral-500">{h.raw_name} · {h.currency}</span>
-                    <span className="w-8 shrink-0 text-right text-neutral-400">{balanceStr}</span>
-                    <span className="w-9 shrink-0 text-right text-neutral-400">—</span>
-                    <span className="w-9 shrink-0 text-right font-medium text-neutral-700">
+                    <span className="w-10 shrink-0 text-right text-neutral-400">{balanceStr}</span>
+                    <span className="w-14 shrink-0 text-right font-medium text-neutral-700">
                       {h.liveEvalKrw != null ? fmtShort(h.liveEvalKrw) : "—"}
                     </span>
-                    <span className="w-[46px] shrink-0" />
                     <span className="w-[52px] shrink-0" />
                   </div>
                 );
               }
 
-              // 일반 종목 행
               const displayName = h.market !== "KRX" && h.ticker ? h.ticker : h.raw_name;
               const changeSign = (h.livePriceChangePercent ?? 0) >= 0;
               const returnSign = (h.liveReturnPct ?? 0) >= 0;
-              const isUsdMarket = h.market !== null && h.market !== "KRX";
-              const costKrw =
-                h.avg_price !== null
-                  ? isUsdMarket
-                    ? h.avg_price * h.quantity * usdKrw
-                    : h.avg_price * h.quantity
-                  : null;
-              const gainKrw =
-                costKrw !== null && h.liveEvalKrw !== null
-                  ? h.liveEvalKrw - costKrw
-                  : null;
 
               return (
                 <div
                   key={h.id}
-                  onClick={() => startEdit(h)}
-                  className="flex items-center gap-x-1 px-4 py-2 cursor-pointer hover:bg-neutral-50 transition-colors"
+                  onClick={() => openDetail(h)}
+                  className="flex items-center gap-x-2 px-4 py-2.5 cursor-pointer hover:bg-neutral-50 active:bg-neutral-100 transition-colors"
                 >
-                  {/* 종목명 + 당일등락률 — 1줄 */}
+                  {/* 종목명 + 당일등락률 */}
                   <div className="flex min-w-0 flex-1 items-center gap-1">
                     <span className="truncate text-sm font-medium text-neutral-900">{displayName}</span>
                     {h.livePriceChangePercent != null && (
@@ -399,20 +500,12 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                     )}
                   </div>
                   {/* 보유수 */}
-                  <span className="w-8 shrink-0 text-right text-xs tabular-nums text-neutral-500">
+                  <span className="w-10 shrink-0 text-right text-xs tabular-nums text-neutral-500">
                     {h.quantity.toLocaleString()}주
                   </span>
-                  {/* 원금 */}
-                  <span className="w-9 shrink-0 text-right text-xs tabular-nums text-neutral-500">
-                    {costKrw !== null ? fmtShort(costKrw) : "—"}
-                  </span>
                   {/* 평가 */}
-                  <span className="w-9 shrink-0 text-right text-xs tabular-nums font-medium text-neutral-800">
+                  <span className="w-14 shrink-0 text-right text-xs tabular-nums font-medium text-neutral-800">
                     {h.liveEvalKrw !== null ? fmtShort(h.liveEvalKrw) : "—"}
-                  </span>
-                  {/* 손익 */}
-                  <span className={`w-[46px] shrink-0 text-right text-xs tabular-nums ${gainKrw == null ? "text-neutral-300" : gainKrw >= 0 ? "text-red-500" : "text-blue-500"}`}>
-                    {gainKrw !== null ? `${gainKrw >= 0 ? "+" : ""}${fmtShort(gainKrw)}` : "—"}
                   </span>
                   {/* 수익율 */}
                   <span className={`w-[52px] shrink-0 text-right text-xs tabular-nums font-semibold ${h.liveReturnPct == null ? "text-neutral-300" : returnSign ? "text-red-500" : "text-blue-500"}`}>
