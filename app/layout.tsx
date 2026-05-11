@@ -43,10 +43,10 @@ export default function RootLayout({
         <div className="mx-auto flex min-h-screen w-full max-w-6xl overflow-x-hidden">
           <SideNav />
           <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
-            <MobileNav />
-            <main className="flex-1 px-4 py-6 md:px-8 md:py-10">{children}</main>
+            <main className="flex-1 px-4 py-6 pb-24 md:px-8 md:py-10 md:pb-10">{children}</main>
           </div>
         </div>
+        <MobileNav />
       </body>
     </html>
   );
