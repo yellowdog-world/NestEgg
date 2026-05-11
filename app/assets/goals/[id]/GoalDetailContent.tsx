@@ -637,17 +637,25 @@ function HoldingsTable({
 
           return (
             <div key={accountType} className="flex border-t border-neutral-200 first:border-t-0">
-              {/* 왼쪽 레이블 */}
-              <div className={`flex w-14 shrink-0 items-center justify-center border-r border-neutral-200 ${bgCls}`}>
-                <span
-                  className="text-[11px] font-bold tracking-widest text-neutral-500"
-                  style={{ writingMode: "vertical-lr" }}
-                >
+              {/* 첫 번째 열: 계좌유형 요약 */}
+              <div className={`flex w-36 shrink-0 flex-col items-start justify-center gap-0.5 border-r border-neutral-200 px-4 py-3 ${bgCls}`}>
+                <p className="text-[11px] font-bold tracking-wide text-neutral-500">
                   {ACCOUNT_TYPE_LABEL[accountType] ?? accountType}
-                </span>
+                </p>
+                <p className="text-sm font-bold tabular-nums text-neutral-900">
+                  {fmtKRWShort(typeTotal)}
+                </p>
+                <p className={`text-xs tabular-nums font-medium ${typePnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                  {typePnl >= 0 ? "+" : ""}{fmtKRWShort(typePnl)}
+                </p>
+                {typeCost > 0 && (
+                  <p className={`text-xs tabular-nums ${typePnl >= 0 ? "text-emerald-500" : "text-red-400"}`}>
+                    ({typePnl >= 0 ? "+" : ""}{((typePnl / typeCost) * 100).toFixed(2)}%)
+                  </p>
+                )}
               </div>
 
-              {/* 종목 행 */}
+              {/* 두 번째 열: 종목 행 */}
               <div className="flex-1 overflow-hidden">
                 {brokerGroups.flatMap((group) =>
                   group.holdings.map((h, i) => {
@@ -685,24 +693,6 @@ function HoldingsTable({
                       </div>
                     );
                   })
-                )}
-              </div>
-
-              {/* 오른쪽 요약 칼럼 — 섹션 전체 높이 차지 */}
-              <div className={`flex w-36 shrink-0 flex-col items-end justify-center gap-0.5 border-l border-neutral-200 px-4 py-3 ${bgCls}`}>
-                <p className="text-[11px] font-bold tracking-wide text-neutral-500">
-                  {ACCOUNT_TYPE_LABEL[accountType] ?? accountType}
-                </p>
-                <p className="text-sm font-bold tabular-nums text-neutral-900">
-                  {fmtKRWShort(typeTotal)}
-                </p>
-                <p className={`text-xs tabular-nums font-medium ${typePnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                  {typePnl >= 0 ? "+" : ""}{fmtKRWShort(typePnl)}
-                </p>
-                {typeCost > 0 && (
-                  <p className={`text-xs tabular-nums ${typePnl >= 0 ? "text-emerald-500" : "text-red-400"}`}>
-                    ({typePnl >= 0 ? "+" : ""}{((typePnl / typeCost) * 100).toFixed(2)}%)
-                  </p>
                 )}
               </div>
             </div>
