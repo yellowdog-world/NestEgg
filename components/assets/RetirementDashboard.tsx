@@ -1257,6 +1257,7 @@ function generateGuide(
   lockedPensionKrw: number,
   needsNationalTransition: boolean,
   monthlyNational: number,
+  monthlyReductionHint: number | null,
 ) {
   const tips: { type: "warning" | "success" | "info"; title: string; desc: string }[] = [];
 
@@ -1265,10 +1266,13 @@ function generateGuide(
 
   if (survival < targetYears) {
     const shortfall = Math.round((targetYears - survival) * 12);
+    const hintSuffix = monthlyReductionHint
+      ? ` 월 생활비를 ${fmtKRWShort(monthlyReductionHint)} 줄이거나, 수익률을 높이면 목표 달성이 가능합니다.`
+      : ` 연간 저축 증가 또는 생활비 조정을 검토하세요.`;
     tips.push({
       type: "warning",
       title: `자산이 ${profile.targetAge}세 전에 고갈될 수 있습니다`,
-      desc: `현재 예상 생존 기간은 ${fmtSurvival(survivalYears)}으로, 목표보다 약 ${shortfall}개월 부족합니다. 연간 저축 증가 또는 생활비 조정을 검토하세요.`,
+      desc: `현재 예상 생존 기간은 ${fmtSurvival(survivalYears)}으로, 목표보다 약 ${shortfall}개월 부족합니다.${hintSuffix}`,
     });
   } else {
     tips.push({
@@ -1287,18 +1291,26 @@ function generateGuide(
   }
 
   if (needsNationalTransition && monthlyNational > 0) {
+    const gapYrs = 65 - profile.retirementAge;
     tips.push({
       type: "info",
-      title: `국민연금은 65세부터 월 ${fmtKRWShort(monthlyNational)} 수령 반영`,
-      desc: `은퇴(${profile.retirementAge}세)→65세 구간은 국민연금 미수령으로 계산했습니다. 이 기간의 소득 공백을 배당·연금 자산으로 채우는 것이 핵심 전략입니다.`,
+      title: `국민연금 수령 전 ${gapYrs}년 소득 공백 — 월 ${fmtKRWShort(monthlyNational)} 미수령`,
+      desc: `은퇴(${profile.retirementAge}세)→65세 구간은 국민연금 없이 자산을 더 빠르게 소진합니다. 이 기간을 배당·연금 자산으로 버티는 것이 핵심입니다.`,
     });
   }
 
   if (monthlySurplus > 0) {
     tips.push({
       type: "info",
-      title: `월 ${fmtKRWShort(monthlySurplus)} 잉여금 발생`,
-      desc: `잉여금을 ISA 또는 IRP에 추가 납입하면 절세 혜택과 함께 자산 생존 기간을 연장할 수 있습니다.`,
+      title: `월 ${fmtKRWShort(monthlySurplus)} 잉여금 — IRP·ISA 추가 납입 추천`,
+      desc: `IRP 연 900만원 납입 시 최대 148.5만원 세액공제(13.2~16.5%). ISA 연 2,000만원·비과세 200만원. 잉여금이 있다면 먼저 이 두 계좌를 채우세요.`,
+    });
+  } else if (profile.currentAge < profile.retirementAge) {
+    // 적자이거나 잉여 없지만 아직 은퇴 전이라면 납입 여력 안내
+    tips.push({
+      type: "info",
+      title: "IRP·ISA 납입 여력 점검 필요",
+      desc: `IRP 연 900만원 납입 시 최대 148.5만원 세액공제. ISA 연 2,000만원 납입, 비과세 200만원 한도. 은퇴 전 매년 최대한 채워두면 노후 세금 부담이 크게 줄어듭니다.`,
     });
   }
 
@@ -1637,6 +1649,46 @@ function Dashboard({
   const snapshotAt100 = depletionResult.series.find((s) => s.age === 99);
   const assetsAt100 = snapshotAt100?.endAssets ?? 0;
 
+  // ── FIRE 달성률 ─────────────────────────────────────────────────────────────
+  // FIRE 목표 = 연간 생활비 ÷ 4% (25배 룰)
+  const fireTarget = Math.round((profile.monthlyBudget * 12) / 0.04);
+  const firePct = fireTarget > 0 ? Math.min(100, (effectiveAssets / fireTarget) * 100) : 0;
+
+  // ── 목표 미달 시 월 절감 힌트 (이분탐색) ──────────────────────────────────────
+  // 단순 단일 페이즈 근사치 — 실제 다단계보다 약간 낙관적일 수 있음
+  let monthlyReductionHint: number | null = null;
+  if (!survivalOk && netYearlyWithdrawal > 0) {
+    const targetHorizon = profile.targetAge - profile.retirementAge + 1;
+    let lo = 0;
+    let hi = netYearlyWithdrawal;
+    for (let iter = 0; iter < 40; iter++) {
+      const mid = (lo + hi) / 2;
+      const test = computeDepletion({
+        startAge: profile.retirementAge,
+        startAssets: effectiveAssets,
+        yearlyWithdrawal: mid,
+        expectedReturn: profile.expectedReturn,
+        inflation: profile.inflation,
+        inflateWithdrawal: true,
+        horizonYears: targetHorizon,
+      });
+      if (test.depletedAtAge === null || test.depletedAtAge >= profile.targetAge) {
+        hi = mid;
+      } else {
+        lo = mid;
+      }
+    }
+    const needed = netYearlyWithdrawal - hi;
+    if (needed > 50_000) {
+      monthlyReductionHint = Math.ceil(needed / 12 / 10_000) * 10_000;
+    }
+  }
+
+  // ── 적자 공백 기간 ────────────────────────────────────────────────────────────
+  // 국민연금 수령 전까지 더 많은 자산 인출이 필요한 구간
+  const gapYears = needsNationalTransition ? NATIONAL_PENSION_AGE - profile.retirementAge : 0;
+  const gapMonthlyNeed = gapYears > 0 ? Math.round(yearlyWd_preNational / 12) : 0;
+
   // ── 연도별 차트 데이터 ──────────────────────────────────────────────────────
   const r = profile.expectedReturn;
   // 연금 자산 비중 (전체 자산 대비, 시뮬 시작 시점 기준)
@@ -1817,6 +1869,7 @@ function Dashboard({
     lockedPensionKrw,
     needsNationalTransition,
     monthlyNational,
+    monthlyReductionHint,
   );
 
   return (
@@ -1868,6 +1921,31 @@ function Dashboard({
         />
       </div>
 
+      {/* FIRE 달성률 */}
+      <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3.5">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-neutral-500">FIRE 달성률</span>
+          <div className="flex items-baseline gap-1.5">
+            <span className={`text-lg font-bold tabular-nums ${firePct >= 100 ? "text-emerald-600" : "text-neutral-800"}`}>
+              {firePct.toFixed(1)}%
+            </span>
+            {firePct >= 100 && (
+              <span className="text-sm font-semibold text-emerald-500">🎉 달성!</span>
+            )}
+          </div>
+        </div>
+        <div className="h-2.5 w-full overflow-hidden rounded-full bg-neutral-100">
+          <div
+            className={`h-2.5 rounded-full transition-all ${firePct >= 100 ? "bg-emerald-400" : firePct >= 75 ? "bg-amber-400" : "bg-amber-300"}`}
+            style={{ width: `${Math.min(100, firePct)}%` }}
+          />
+        </div>
+        <div className="mt-1.5 flex items-center justify-between text-sm text-neutral-400">
+          <span>현재 {fmtKRWShort(effectiveAssets)}</span>
+          <span>목표 {fmtKRWShort(fireTarget)} (연 지출 × 25배)</span>
+        </div>
+      </div>
+
       {/* 슬라이더 패널 */}
       <SliderPanel profile={profile} onChange={onProfileChange} />
 
@@ -1911,15 +1989,24 @@ function Dashboard({
           />
 
           {/* 잔여 */}
-          <div className="flex items-center justify-between border-t border-neutral-200 pt-4">
-            <span className="text-base font-medium text-neutral-500">
-              {monthlySurplus >= 0 ? "월 잉여금" : "월 부족분"}
-            </span>
-            <span className={`text-lg font-bold tabular-nums ${
-              monthlySurplus >= 0 ? "text-emerald-700" : "text-red-700"
-            }`}>
-              {monthlySurplus >= 0 ? "+" : "−"}{fmtKRWShort(Math.abs(monthlySurplus))}
-            </span>
+          <div className="border-t border-neutral-200 pt-4">
+            <div className="flex items-center justify-between">
+              <span className="text-base font-medium text-neutral-500">
+                {monthlySurplus >= 0 ? "월 잉여금" : "월 부족분"}
+              </span>
+              <span className={`text-lg font-bold tabular-nums ${
+                monthlySurplus >= 0 ? "text-emerald-700" : "text-red-700"
+              }`}>
+                {monthlySurplus >= 0 ? "+" : "−"}{fmtKRWShort(Math.abs(monthlySurplus))}
+              </span>
+            </div>
+            {/* 적자 공백 기간 안내 */}
+            {gapYears > 0 && gapMonthlyNeed > 0 && (
+              <p className="mt-1.5 text-sm text-amber-700 bg-amber-50 rounded px-2.5 py-1.5">
+                📌 국민연금 수령 전 <b>{gapYears}년</b> 동안 월 {fmtKRWShort(gapMonthlyNeed)} 추가 인출 필요
+                — 이 기간이 자산 소진 속도가 가장 빠릅니다
+              </p>
+            )}
           </div>
 
           {/* AI 분석 — 세금 최소화 인출 전략 */}
