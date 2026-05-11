@@ -256,7 +256,7 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
           const pct = totalCostKrw > 0 ? (gain / totalCostKrw) * 100 : null;
           const pos = gain >= 0;
           return (
-            <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs tabular-nums">
+            <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm tabular-nums">
               {totalCostKrw > 0 && (
                 <>
                   <span className="text-neutral-400">원금</span>
