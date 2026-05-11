@@ -26,67 +26,90 @@ export default async function AssetsPage() {
     );
   }
 
-  // ── 1. 계좌 목록 ───────────────────────────────────────────────────────────
-  const { data: accounts } = await supabase
-    .from("accounts")
-    .select("id,type,broker,nickname")
-    .order("created_at", { ascending: true });
-
-  // ── 2. confirmed 스냅샷 전체 ───────────────────────────────────────────────
-  const { data: snapshots } = await supabase
-    .from("snapshots")
-    .select("id,account_id,captured_at,total_eval")
-    .eq("status", "confirmed")
-    .order("captured_at", { ascending: false });
+  // ── 1+2. 계좌 + 스냅샷 병렬 조회 ─────────────────────────────────────────
+  const [{ data: accounts }, { data: snapshots }] = await Promise.all([
+    supabase
+      .from("accounts")
+      .select("id,type,broker,nickname")
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("snapshots")
+      .select("id,account_id,captured_at,total_eval")
+      .eq("status", "confirmed")
+      .order("captured_at", { ascending: false }),
+  ]);
 
   const snapshotList = snapshots ?? [];
 
-  // 계좌별 최근 스냅샷
-  const latestByAccount = new Map<string, (typeof snapshotList)[0]>();
+  // 계좌별 최근 스냅샷 captured_at (카드 "N월 N일 기준" 표시용)
+  const latestCapturedAtByAccount = new Map<string, string>();
   for (const s of snapshotList) {
-    if (!latestByAccount.has(s.account_id)) latestByAccount.set(s.account_id, s);
+    if (!latestCapturedAtByAccount.has(s.account_id)) {
+      latestCapturedAtByAccount.set(s.account_id, s.captured_at);
+    }
   }
-  const latestSnapshotIds = [...latestByAccount.values()].map((s) => s.id);
 
-  // ── 3. 최근 스냅샷 홀딩 (계좌 카드용) ────────────────────────────────────
-  const { data: holdingsRaw } = latestSnapshotIds.length
-    ? await supabase
-        .from("holdings")
-        .select("id,raw_name,quantity,avg_price,currency,snapshot_id,security_ticker,security_market")
-        .in("snapshot_id", latestSnapshotIds)
-    : { data: [] };
-
-  // ── 4. 전체 스냅샷 홀딩 (시계열 원금 계산용) ──────────────────────────────
+  // ── 3+4. holdings + allHoldingsForCost 병렬 조회 ──────────────────────────
+  const accountIds = (accounts ?? []).map((a) => a.id);
   const allSnapshotIds = snapshotList.map((s) => s.id);
-  const { data: allHoldingsForCost } = allSnapshotIds.length
-    ? await supabase
-        .from("holdings")
-        .select("snapshot_id,quantity,avg_price,currency,raw_name")
-        .in("snapshot_id", allSnapshotIds)
-    : { data: [] };
 
-  // ── 5. 시세 조회용 티커 수집 ───────────────────────────────────────────────
+  const [holdingsRaw, allHoldingsForCost] = await Promise.all([
+    accountIds.length
+      ? supabase
+          .from("holdings")
+          .select("id,raw_name,quantity,avg_price,currency,account_id,security_ticker,security_market")
+          .in("account_id", accountIds)
+          .then((r) => r.data ?? [])
+      : Promise.resolve([] as { id: string; raw_name: string; quantity: number; avg_price: number | null; currency: string; account_id: string; security_ticker: string | null; security_market: string | null }[]),
+    allSnapshotIds.length
+      ? supabase
+          .from("holdings")
+          .select("snapshot_id,quantity,avg_price,currency,raw_name,account_id")
+          .in("snapshot_id", allSnapshotIds)
+          .then((r) => r.data ?? [])
+      : Promise.resolve([] as { snapshot_id: string; quantity: number; avg_price: number | null; currency: string; raw_name: string; account_id: string }[]),
+  ]);
+
+  // ── 5. 티커 수집 (시세 + 배당 동시 — priceMap 결과 불필요) ─────────────────
   const tickerSet = new Map<string, { ticker: string; market: string }>();
   let hasUsd = false;
 
-  for (const h of holdingsRaw ?? []) {
+  // 배당 조회용: holdingsRaw에서 직접 수집 (enrichedAccounts 완성 전에 시작 가능)
+  const divQtyByTicker = new Map<string, { qty: number; name: string; market: string }>();
+
+  for (const h of holdingsRaw) {
     const info = h.security_ticker
       ? { ticker: h.security_ticker, market: h.security_market ?? "KRX" }
       : lookupTicker(h.raw_name);
     if (info) tickerSet.set(info.ticker, info);
     if (h.currency === "USD") hasUsd = true;
+
+    if (!h.raw_name.includes("예수금") && info?.ticker) {
+      const prev = divQtyByTicker.get(info.ticker) ?? { qty: 0, name: h.raw_name, market: info.market };
+      prev.qty += Number(h.quantity);
+      divQtyByTicker.set(info.ticker, prev);
+    }
   }
   if (hasUsd) tickerSet.set("USDKRW=X", { ticker: "USDKRW=X", market: "FOREX" });
 
-  // ── 6. 시세 일괄 조회 ─────────────────────────────────────────────────────
-  const priceMap = await fetchPriceMap([...tickerSet.values()]);
+  const TWO_YEARS_AGO = new Date(Date.now() - 2 * 365 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const divTickerItems = [...divQtyByTicker.entries()]
+    .filter(([, v]) => v.qty > 0)
+    .map(([ticker, v]) => ({ ticker, market: v.market }));
+
+  // ── 6. 시세 + 배당 이력 병렬 조회 (DB 캐시 적용) ────────────────────────────
+  const [priceMap, dividendHistoryMap] = await Promise.all([
+    fetchPriceMap([...tickerSet.values()]),
+    fetchDividendHistoryBatch(divTickerItems, TWO_YEARS_AGO),
+  ]);
+
   const usdKrw = priceMap.get("USDKRW=X")?.price ?? 1380;
 
   // ── 7. 스냅샷별 원금(cost) 계산 ───────────────────────────────────────────
   // DB의 currency 컬럼이 잘못 저장된 경우(KRX ETF가 USD로 저장)를 방지하기 위해
   // lookupTicker로 실제 통화를 우선 결정한다.
   const costBySnapshotId = new Map<string, number>();
-  for (const h of allHoldingsForCost ?? []) {
+  for (const h of allHoldingsForCost) {
     const qty = Number(h.quantity);
     const avgP = h.avg_price != null ? Number(h.avg_price) : 0;
     const tickerInfo = lookupTicker(h.raw_name);
@@ -95,12 +118,12 @@ export default async function AssetsPage() {
     costBySnapshotId.set(h.snapshot_id, (costBySnapshotId.get(h.snapshot_id) ?? 0) + cost);
   }
 
-  // ── 8. 홀딩 그룹화 ────────────────────────────────────────────────────────
+  // ── 8. holdings 그룹화 (account_id 기준) ─────────────────────────────────
   type HoldingRow = NonNullable<typeof holdingsRaw>[number];
-  const holdingsBySnapshot = new Map<string, HoldingRow[]>();
-  for (const h of holdingsRaw ?? []) {
-    if (!holdingsBySnapshot.has(h.snapshot_id)) holdingsBySnapshot.set(h.snapshot_id, []);
-    holdingsBySnapshot.get(h.snapshot_id)!.push(h);
+  const holdingsByAccount = new Map<string, HoldingRow[]>();
+  for (const h of holdingsRaw) {
+    if (!holdingsByAccount.has(h.account_id)) holdingsByAccount.set(h.account_id, []);
+    holdingsByAccount.get(h.account_id)!.push(h);
   }
 
   // ── 9. 계좌별 enriched 데이터 ─────────────────────────────────────────────
@@ -108,8 +131,7 @@ export default async function AssetsPage() {
   let totalLiveKrw = 0;
 
   const enrichedAccounts = accountList.map((a) => {
-    const latest = latestByAccount.get(a.id);
-    const rawHoldings = latest ? (holdingsBySnapshot.get(latest.id) ?? []) : [];
+    const rawHoldings = holdingsByAccount.get(a.id) ?? [];
 
     const holdings: HoldingWithLive[] = rawHoldings.map((h) => {
       const info = h.security_ticker
@@ -170,8 +192,7 @@ export default async function AssetsPage() {
 
     return {
       account: a,
-      snapshotId: latest?.id ?? null,
-      capturedAt: latest?.captured_at ?? null,
+      capturedAt: latestCapturedAtByAccount.get(a.id) ?? null,
       holdings,
       totalEvalKrw,
       totalCostKrw,
@@ -179,10 +200,21 @@ export default async function AssetsPage() {
   });
 
   // ── 10. 시계열 포인트 ─────────────────────────────────────────────────────
-  // 최근 스냅샷은 라이브 평가금으로 덮어써서 OCR 오류를 교정한다
+  // 최근 스냅샷의 라이브 평가금으로 OCR 저장값을 교정한다
+  // account.id → liveEvalKrw 매핑 → 최근 snapshotId와 연결
+  const liveEvalByAccountId = new Map<string, number>();
+  for (const { account, totalEvalKrw } of enrichedAccounts) {
+    if (totalEvalKrw > 0) liveEvalByAccountId.set(account.id, totalEvalKrw);
+  }
+  // 최근 스냅샷 ID → 라이브 평가금 (시계열 차트에 사용)
   const liveEvalBySnapshotId = new Map<string, number>();
-  for (const { snapshotId, totalEvalKrw } of enrichedAccounts) {
-    if (snapshotId && totalEvalKrw > 0) liveEvalBySnapshotId.set(snapshotId, totalEvalKrw);
+  for (const s of snapshotList) {
+    if (!liveEvalBySnapshotId.has(s.id)) {
+      const liveEval = liveEvalByAccountId.get(s.account_id);
+      // 계좌의 최근 스냅샷에만 라이브 값 적용
+      const isLatestForAccount = latestCapturedAtByAccount.get(s.account_id) === s.captured_at;
+      if (liveEval && isLatestForAccount) liveEvalBySnapshotId.set(s.id, liveEval);
+    }
   }
 
   const timelinePoints = buildTimelinePoints(
@@ -192,37 +224,7 @@ export default async function AssetsPage() {
   );
 
   // ── 11. 보유 종목 기반 자동 배당 계산 ────────────────────────────────────────
-  // (a) 계좌별 최근 스냅샷 기준으로 티커별 현재 보유 수량 합산
-  const currentQtyByTicker = new Map<
-    string,
-    { qty: number; name: string; market: string }
-  >();
-  for (const { holdings } of enrichedAccounts) {
-    for (const h of holdings) {
-      if (h.isCash || !h.ticker) continue;
-      const prev = currentQtyByTicker.get(h.ticker) ?? {
-        qty: 0,
-        name: h.raw_name,
-        market: h.market ?? "KRX",
-      };
-      prev.qty += h.quantity;
-      currentQtyByTicker.set(h.ticker, prev);
-    }
-  }
-
-  // (b) 보유 중인 티커 목록으로 Yahoo Finance 배당 이력 조회 (2년치)
-  const divTickerItems = [...currentQtyByTicker.entries()]
-    .filter(([, v]) => v.qty > 0)
-    .map(([ticker, v]) => ({ ticker, market: v.market }));
-
-  const TWO_YEARS_AGO = new Date(Date.now() - 2 * 365 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  const dividendHistoryMap = await fetchDividendHistoryBatch(
-    divTickerItems,
-    TWO_YEARS_AGO,
-  );
-
+  // divQtyByTicker / divTickerItems / dividendHistoryMap은 step 5~6에서 이미 준비됨
   // (c) 주당배당금 × 보유수량 → DividendRow 계산
   const today = new Date().toISOString().slice(0, 10);
   const autoDividends: {
@@ -233,7 +235,7 @@ export default async function AssetsPage() {
   }[] = [];
 
   for (const [ticker, events] of dividendHistoryMap) {
-    const info = currentQtyByTicker.get(ticker)!;
+    const info = divQtyByTicker.get(ticker)!;
     const divType = inferDividendType(events);
     for (const event of events) {
       if (event.date > today) continue;

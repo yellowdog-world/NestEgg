@@ -37,33 +37,20 @@ export default async function SecurityDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return notFound();
 
-  // 이 종목을 보유한 모든 계좌의 최신 스냅샷 holdings 조회
+  // account_id 기준으로 직접 조회 (snapshot 무관)
   const { data: rows } = await supabase
     .from("holdings")
     .select(`
-      id, raw_name, quantity, avg_price, currency,
-      snapshot_id,
-      snapshots!inner(id, captured_at, status, account_id,
-        accounts(id, broker, nickname, type))
+      id, raw_name, quantity, avg_price, currency, account_id,
+      accounts!inner(id, broker, nickname, type, user_id)
     `)
     .eq("security_ticker", decodedTicker)
-    .eq("snapshots.user_id", user.id)
-    .order("created_at", { ascending: false });
+    .eq("accounts.user_id", user.id);
 
   if (!rows || rows.length === 0) return notFound();
 
-  // 계좌별 최신 스냅샷만 추출 (같은 계좌의 중복 스냅샷 제거)
-  const latestByAccount = new Map<string, typeof rows[number]>();
-  for (const r of rows) {
-    const snap = r.snapshots as unknown as {
-      id: string; captured_at: string; status: string; account_id: string;
-      accounts: { id: string; broker: string | null; nickname: string | null; type: string } | null;
-    };
-    const acctId = snap?.account_id;
-    if (!acctId) continue;
-    if (!latestByAccount.has(acctId)) latestByAccount.set(acctId, r);
-  }
-  const holdings = [...latestByAccount.values()];
+  // account_id 기반 — 각 계좌당 하나의 holdings set이므로 중복 없음
+  const holdings = rows;
   if (holdings.length === 0) return notFound();
 
   // 시세·환율 조회
@@ -228,11 +215,9 @@ export default async function SecurityDetailPage({
         </div>
         <div className="divide-y divide-neutral-50">
           {holdings.map((h) => {
-            const snap = h.snapshots as unknown as {
-              captured_at: string;
-              accounts: { broker: string | null; nickname: string | null; type: string } | null;
-            };
-            const acct = snap?.accounts;
+            const acct = h.accounts as unknown as {
+              id: string; broker: string | null; nickname: string | null; type: string; user_id: string;
+            } | null;
             const broker = acct?.broker ?? "—";
             const nickname = acct?.nickname;
             const acctType = acct?.type ?? "";
