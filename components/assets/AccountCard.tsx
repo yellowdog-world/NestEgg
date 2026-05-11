@@ -53,14 +53,13 @@ export type HoldingWithLive = {
 
 type Props = {
   account: { id: string; type: string; broker: string | null; nickname: string | null };
-  snapshotId: string | null;
   capturedAt: string | null;
   holdings: HoldingWithLive[];
   totalEvalKrw: number;
   totalCostKrw: number;
 };
 
-export function AccountCard({ account, snapshotId, capturedAt, holdings, totalEvalKrw, totalCostKrw }: Props) {
+export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, totalCostKrw }: Props) {
   const router = useRouter();
 
   const [editId, setEditId] = useState<string | null>(null);
@@ -242,14 +241,12 @@ export function AccountCard({ account, snapshotId, capturedAt, holdings, totalEv
             >
               편집
             </button>
-            {snapshotId && (
-              <Link
-                href={`/assets/holdings/${snapshotId}`}
-                className="rounded-md border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50"
-              >
-                종목 편집
-              </Link>
-            )}
+            <Link
+              href={`/assets/holdings/${account.id}`}
+              className="rounded-md border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50"
+            >
+              종목 편집
+            </Link>
           </div>
         </div>
 
@@ -442,11 +439,11 @@ export function AccountCard({ account, snapshotId, capturedAt, holdings, totalEv
       )}
 
       {/* 홀딩 없음 */}
-      {holdings.length === 0 && snapshotId && (
+      {holdings.length === 0 && (
         <div className="px-5 pb-5 pt-2">
           <p className="text-xs text-neutral-400">
             종목 없음 —{" "}
-            <Link href={`/assets/holdings/${snapshotId}`} className="text-blue-600 underline">
+            <Link href={`/assets/holdings/${account.id}`} className="text-blue-600 underline">
               편집하기
             </Link>
           </p>

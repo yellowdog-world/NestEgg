@@ -7,33 +7,33 @@ import { lookupTicker } from "@/lib/market/ticker-map";
 export default async function HoldingsEditPage({
   params,
 }: {
-  params: Promise<{ snapshotId: string }>;
+  params: Promise<{ accountId: string }>;
 }) {
-  const { snapshotId } = await params;
+  const { accountId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return notFound();
 
-  const { data: snapshot } = await supabase
-    .from("snapshots")
-    .select("id, user_id, account_id, accounts(broker, nickname, type)")
-    .eq("id", snapshotId)
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("id, user_id, broker, nickname, type")
+    .eq("id", accountId)
     .single();
-  if (!snapshot || snapshot.user_id !== user.id) return notFound();
+  if (!account || account.user_id !== user.id) return notFound();
 
+  // account_id 기준으로 현재 holdings 직접 조회 (스냅샷 무관)
   const { data: holdings } = await supabase
     .from("holdings")
     .select("id, raw_name, quantity, avg_price, currency, security_ticker")
-    .eq("snapshot_id", snapshotId)
+    .eq("account_id", accountId)
     .order("created_at");
 
   type HoldingRow = NonNullable<typeof holdings>[number];
 
   const initial = (holdings ?? []).map((h: HoldingRow) => {
     const dbTicker = h.security_ticker ?? null;
-    // 정적 맵이 있으면 DB보다 신뢰 (OCR이 잘못 연결했을 수 있음)
-    const mappedTicker = lookupTicker(h.raw_name)?.ticker ?? null;
-    const ticker = mappedTicker ?? dbTicker ?? "";
+    // DB 저장값(사용자가 명시적으로 입력) 우선 — 정적 맵은 DB가 없을 때만 fallback
+    const ticker = dbTicker ?? lookupTicker(h.raw_name)?.ticker ?? "";
     return {
       raw_name: h.raw_name,
       ticker,
@@ -43,8 +43,7 @@ export default async function HoldingsEditPage({
     };
   });
 
-  const acct = snapshot.accounts as unknown as { broker: string | null; nickname: string | null; type: string } | null;
-  const acctLabel = [acct?.broker, acct?.nickname].filter(Boolean).join(" · ") || "계좌";
+  const acctLabel = [account.broker, account.nickname].filter(Boolean).join(" · ") || "계좌";
 
   return (
     <div className="flex flex-col gap-6">
@@ -56,7 +55,7 @@ export default async function HoldingsEditPage({
         <p className="mt-1 text-sm text-neutral-500">{acctLabel}</p>
       </header>
 
-      <HoldingsDirectEditor snapshotId={snapshotId} initial={initial} />
+      <HoldingsDirectEditor accountId={accountId} initial={initial} />
     </div>
   );
 }

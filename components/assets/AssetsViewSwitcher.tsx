@@ -9,7 +9,6 @@ import { fmtKRWShort, fmtKRW, fmtUSD, fmtNum } from "@/lib/utils/format";
 
 export type EnrichedAccount = {
   account: { id: string; type: string; broker: string | null; nickname: string | null };
-  snapshotId: string | null;
   capturedAt: string | null;
   holdings: HoldingWithLive[];
   totalEvalKrw: number;
@@ -194,11 +193,10 @@ export function AssetsViewSwitcher({
           {isEmpty ? (
             <EmptyState />
           ) : (
-            accounts.map(({ account, snapshotId, capturedAt, holdings, totalEvalKrw, totalCostKrw }) => (
+            accounts.map(({ account, capturedAt, holdings, totalEvalKrw, totalCostKrw }) => (
               <AccountCard
                 key={account.id}
                 account={account}
-                snapshotId={snapshotId}
                 capturedAt={capturedAt}
                 holdings={holdings}
                 totalEvalKrw={totalEvalKrw}
@@ -288,7 +286,7 @@ export function AssetsViewSwitcher({
                 {/* 펼쳐진 계좌 목록 */}
                 {open && (
                   <div className="border-t border-neutral-100">
-                    {accts.map(({ account, capturedAt, snapshotId, totalEvalKrw: aEval, totalCostKrw: aCost }) => {
+                    {accts.map(({ account, capturedAt, totalEvalKrw: aEval, totalCostKrw: aCost }) => {
                       const gain = aEval - aCost;
                       const retPct = aCost > 0 ? (gain / aCost) * 100 : null;
                       const pos = (retPct ?? 0) >= 0;
@@ -319,15 +317,13 @@ export function AssetsViewSwitcher({
                               </p>
                             )}
                           </div>
-                          {snapshotId && (
-                            <Link
-                              href={`/assets/holdings/${snapshotId}`}
-                              className="shrink-0 rounded-md border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              종목
-                            </Link>
-                          )}
+                          <Link
+                            href={`/assets/holdings/${account.id}`}
+                            className="shrink-0 rounded-md border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            종목
+                          </Link>
                         </div>
                       );
                     })}
