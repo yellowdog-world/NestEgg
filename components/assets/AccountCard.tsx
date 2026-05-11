@@ -296,10 +296,10 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
           {/* 컬럼 헤더 */}
           <div className="flex items-center gap-x-1 px-4 py-1.5 border-b border-neutral-50 text-[10px] text-neutral-400">
             <span className="flex-1 min-w-0">종목명</span>
-            <span className="w-9 shrink-0 text-right">보유수</span>
-            <span className="w-10 shrink-0 text-right">원금</span>
-            <span className="w-10 shrink-0 text-right">평가</span>
-            <span className="w-[52px] shrink-0 text-right">손익</span>
+            <span className="w-8 shrink-0 text-right">보유수</span>
+            <span className="w-9 shrink-0 text-right">원금</span>
+            <span className="w-9 shrink-0 text-right">평가</span>
+            <span className="w-[46px] shrink-0 text-right">손익</span>
             <span className="w-[52px] shrink-0 text-right">수익율</span>
           </div>
 
@@ -356,12 +356,12 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                 return (
                   <div key={h.id} className="flex items-center gap-x-1 px-4 py-2 bg-neutral-50/60 text-xs tabular-nums">
                     <span className="flex-1 min-w-0 truncate text-neutral-500">{h.raw_name} · {h.currency}</span>
-                    <span className="w-9 shrink-0 text-right text-neutral-400">{balanceStr}</span>
-                    <span className="w-10 shrink-0 text-right text-neutral-400">—</span>
-                    <span className="w-10 shrink-0 text-right font-medium text-neutral-700">
+                    <span className="w-8 shrink-0 text-right text-neutral-400">{balanceStr}</span>
+                    <span className="w-9 shrink-0 text-right text-neutral-400">—</span>
+                    <span className="w-9 shrink-0 text-right font-medium text-neutral-700">
                       {h.liveEvalKrw != null ? fmtShort(h.liveEvalKrw) : "—"}
                     </span>
-                    <span className="w-[52px] shrink-0" />
+                    <span className="w-[46px] shrink-0" />
                     <span className="w-[52px] shrink-0" />
                   </div>
                 );
@@ -389,29 +389,29 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                   onClick={() => startEdit(h)}
                   className="flex items-center gap-x-1 px-4 py-2 cursor-pointer hover:bg-neutral-50 transition-colors"
                 >
-                  {/* 종목명(1행) + 당일등락률(2행) — 2줄로 분리해 가로 공간 확보 */}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-neutral-900">{displayName}</p>
+                  {/* 종목명 + 당일등락률 — 1줄 */}
+                  <div className="flex min-w-0 flex-1 items-center gap-1">
+                    <span className="truncate text-sm font-medium text-neutral-900">{displayName}</span>
                     {h.livePriceChangePercent != null && (
-                      <p className={`text-xs tabular-nums ${changeSign ? "text-red-500" : "text-blue-500"}`}>
+                      <span className={`shrink-0 text-xs tabular-nums ${changeSign ? "text-red-500" : "text-blue-500"}`}>
                         {changeSign ? "▲" : "▼"}{Math.abs(h.livePriceChangePercent).toFixed(2)}%
-                      </p>
+                      </span>
                     )}
                   </div>
                   {/* 보유수 */}
-                  <span className="w-9 shrink-0 text-right text-xs tabular-nums text-neutral-500">
+                  <span className="w-8 shrink-0 text-right text-xs tabular-nums text-neutral-500">
                     {h.quantity.toLocaleString()}주
                   </span>
                   {/* 원금 */}
-                  <span className="w-10 shrink-0 text-right text-xs tabular-nums text-neutral-500">
+                  <span className="w-9 shrink-0 text-right text-xs tabular-nums text-neutral-500">
                     {costKrw !== null ? fmtShort(costKrw) : "—"}
                   </span>
                   {/* 평가 */}
-                  <span className="w-10 shrink-0 text-right text-xs tabular-nums font-medium text-neutral-800">
+                  <span className="w-9 shrink-0 text-right text-xs tabular-nums font-medium text-neutral-800">
                     {h.liveEvalKrw !== null ? fmtShort(h.liveEvalKrw) : "—"}
                   </span>
                   {/* 손익 */}
-                  <span className={`w-[52px] shrink-0 text-right text-xs tabular-nums ${gainKrw == null ? "text-neutral-300" : gainKrw >= 0 ? "text-red-500" : "text-blue-500"}`}>
+                  <span className={`w-[46px] shrink-0 text-right text-xs tabular-nums ${gainKrw == null ? "text-neutral-300" : gainKrw >= 0 ? "text-red-500" : "text-blue-500"}`}>
                     {gainKrw !== null ? `${gainKrw >= 0 ? "+" : ""}${fmtShort(gainKrw)}` : "—"}
                   </span>
                   {/* 수익율 */}
