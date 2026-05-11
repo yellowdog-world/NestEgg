@@ -456,8 +456,8 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
           <div className="flex items-center gap-x-2 px-4 py-1.5 border-b border-neutral-50 text-[10px] text-neutral-400">
             <span className="flex-1 min-w-0 max-w-[130px]">종목명</span>
             <span className="ml-auto w-[40px] shrink-0 text-right">보유수</span>
-            <span className="w-[56px] shrink-0 text-right">평가</span>
-            <span className="w-[52px] shrink-0 text-right">수익율</span>
+            <span className="w-[64px] shrink-0 text-right">평가</span>
+            <span className="w-[60px] shrink-0 text-right">수익율</span>
           </div>
 
           <div className="divide-y divide-neutral-50">
@@ -472,10 +472,10 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                   <div key={h.id} className="flex items-center gap-x-2 px-4 py-2 bg-neutral-50/60 text-xs tabular-nums">
                     <span className="flex-1 min-w-0 max-w-[130px] truncate text-neutral-500">{h.raw_name} · {h.currency}</span>
                     <span className="ml-auto w-[40px] shrink-0 text-right text-neutral-400">{balanceStr}</span>
-                    <span className="w-[56px] shrink-0 text-right font-medium text-neutral-700">
+                    <span className="w-[64px] shrink-0 text-right font-medium text-neutral-700">
                       {h.liveEvalKrw != null ? fmtShort(h.liveEvalKrw) : "—"}
                     </span>
-                    <span className="w-[52px] shrink-0" />
+                    <span className="w-[60px] shrink-0" />
                   </div>
                 );
               }
@@ -504,11 +504,11 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                     {h.quantity.toLocaleString()}주
                   </span>
                   {/* 평가 */}
-                  <span className="w-[56px] shrink-0 text-right text-xs tabular-nums font-medium text-neutral-800 whitespace-nowrap">
+                  <span className="w-[64px] shrink-0 text-right text-sm tabular-nums font-medium text-neutral-800 whitespace-nowrap">
                     {h.liveEvalKrw !== null ? fmtShort(h.liveEvalKrw) : "—"}
                   </span>
                   {/* 수익율 */}
-                  <span className={`w-[52px] shrink-0 text-right text-xs tabular-nums font-semibold whitespace-nowrap ${h.liveReturnPct == null ? "text-neutral-300" : returnSign ? "text-red-500" : "text-blue-500"}`}>
+                  <span className={`w-[60px] shrink-0 text-right text-sm tabular-nums font-semibold whitespace-nowrap ${h.liveReturnPct == null ? "text-neutral-300" : returnSign ? "text-red-500" : "text-blue-500"}`}>
                     {h.liveReturnPct !== null ? `${returnSign ? "+" : ""}${h.liveReturnPct.toFixed(1)}%` : "—"}
                   </span>
                 </div>
