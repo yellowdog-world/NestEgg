@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { fetchPriceMap, fetchUsdKrwRate } from "@/lib/market/price";
 import { lookupTicker } from "@/lib/market/ticker-map";
+import { aggregateByCategory } from "@/lib/market/asset-category";
 
 // Vercel Cron: 매일 22:00 UTC = 한국 07:00 KST
 // vercel.json에 설정 필요: { "crons": [{ "path": "/api/cron/daily-snapshot", "schedule": "0 22 * * *" }] }
@@ -92,7 +93,8 @@ export async function GET(req: Request) {
           accountTotal += evalKrw;
           holdingDetails.push({
             raw_name: h.raw_name,
-            ticker: info?.ticker,
+            ticker: info?.ticker ?? null,
+            market: info?.market ?? null,
             quantity: qty,
             price: live.price,
             currency: live.currency,
@@ -111,12 +113,16 @@ export async function GET(req: Request) {
       });
     }
 
+    // 전체 holdings 플랫하게 모아 카테고리별 집계
+    const allHoldingFlat = accountBreakdowns.flatMap((a) => a.holdings);
+    const categoryBreakdown = aggregateByCategory(allHoldingFlat);
+
     rows.push({
       user_id: userId,
       snapshot_date: today,
       total_krw: Math.round(totalKrw),
       usd_krw_rate: usdKrw,
-      breakdown: { accounts: accountBreakdowns },
+      breakdown: { accounts: accountBreakdowns, category_breakdown: categoryBreakdown },
     });
   }
 
