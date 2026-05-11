@@ -500,15 +500,15 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                     )}
                   </div>
                   {/* 보유수 */}
-                  <span className="w-10 shrink-0 text-right text-xs tabular-nums text-neutral-500">
+                  <span className="w-10 shrink-0 text-right text-xs tabular-nums text-neutral-500 whitespace-nowrap">
                     {h.quantity.toLocaleString()}주
                   </span>
                   {/* 평가 */}
-                  <span className="w-14 shrink-0 text-right text-xs tabular-nums font-medium text-neutral-800">
+                  <span className="w-14 shrink-0 text-right text-xs tabular-nums font-medium text-neutral-800 whitespace-nowrap">
                     {h.liveEvalKrw !== null ? fmtShort(h.liveEvalKrw) : "—"}
                   </span>
                   {/* 수익율 */}
-                  <span className={`w-[52px] shrink-0 text-right text-xs tabular-nums font-semibold ${h.liveReturnPct == null ? "text-neutral-300" : returnSign ? "text-red-500" : "text-blue-500"}`}>
+                  <span className={`w-[52px] shrink-0 text-right text-xs tabular-nums font-semibold whitespace-nowrap ${h.liveReturnPct == null ? "text-neutral-300" : returnSign ? "text-red-500" : "text-blue-500"}`}>
                     {h.liveReturnPct !== null ? `${returnSign ? "+" : ""}${h.liveReturnPct.toFixed(1)}%` : "—"}
                   </span>
                 </div>
