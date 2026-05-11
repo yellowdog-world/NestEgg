@@ -489,10 +489,10 @@ function Step1({
         <div className="flex items-center gap-2">
           <input
             type="number"
-            min={form.currentAge + 1}
+            min={form.currentAge}
             max={90}
             value={form.retirementAge}
-            onChange={(e) => onChange("retirementAge", Math.max(form.currentAge + 1, Number(e.target.value)))}
+            onChange={(e) => onChange("retirementAge", Math.max(form.currentAge, Number(e.target.value)))}
             className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
           />
           <span className="shrink-0 text-xs text-neutral-500">세</span>
@@ -668,8 +668,8 @@ function EditForm({
           <FieldRow label="은퇴 목표">
             <div className="flex items-center gap-1.5">
               <input
-                type="number" min={form.currentAge + 1} max={90} value={form.retirementAge}
-                onChange={(e) => set("retirementAge", Math.max(form.currentAge + 1, Number(e.target.value)))}
+                type="number" min={form.currentAge} max={90} value={form.retirementAge}
+                onChange={(e) => set("retirementAge", Math.max(form.currentAge, Number(e.target.value)))}
                 className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
               />
               <span className="shrink-0 text-xs text-neutral-500">세</span>
@@ -1034,7 +1034,7 @@ function SliderPanel({
       <div className="grid grid-cols-3 gap-x-4 gap-y-3">
         {SLIDERS.map((s) => {
           const value = profile[s.key] as number;
-          const effectiveMin = s.key === "retirementAge" ? profile.currentAge + 1 : s.min;
+          const effectiveMin = s.key === "retirementAge" ? profile.currentAge : s.min;
           const pct = Math.max(0, Math.min(100, ((value - effectiveMin) / (s.max - effectiveMin)) * 100));
           return (
             <div key={s.key} className="flex flex-col gap-1">
@@ -1052,7 +1052,7 @@ function SliderPanel({
                 value={value}
                 onChange={(e) => {
                   let v = Number(e.target.value);
-                  if (s.key === "retirementAge") v = Math.max(profile.currentAge + 1, v);
+                  if (s.key === "retirementAge") v = Math.max(profile.currentAge, v);
                   onChange({ ...profile, [s.key]: v });
                 }}
                 className="w-full cursor-pointer appearance-none rounded-full accent-amber-500"
