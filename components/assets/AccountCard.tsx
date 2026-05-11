@@ -455,8 +455,8 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
           {/* 컬럼 헤더 */}
           <div className="flex items-center gap-x-2 px-4 py-1.5 border-b border-neutral-50 text-[10px] text-neutral-400">
             <span className="flex-1 min-w-0">종목명</span>
-            <span className="w-10 shrink-0 text-right">보유수</span>
-            <span className="w-14 shrink-0 text-right">평가</span>
+            <span className="w-[40px] shrink-0 text-right">보유수</span>
+            <span className="w-[56px] shrink-0 text-right">평가</span>
             <span className="w-[52px] shrink-0 text-right">수익율</span>
           </div>
 
@@ -471,8 +471,8 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                 return (
                   <div key={h.id} className="flex items-center gap-x-2 px-4 py-2 bg-neutral-50/60 text-xs tabular-nums">
                     <span className="flex-1 min-w-0 truncate text-neutral-500">{h.raw_name} · {h.currency}</span>
-                    <span className="w-10 shrink-0 text-right text-neutral-400">{balanceStr}</span>
-                    <span className="w-14 shrink-0 text-right font-medium text-neutral-700">
+                    <span className="w-[40px] shrink-0 text-right text-neutral-400">{balanceStr}</span>
+                    <span className="w-[56px] shrink-0 text-right font-medium text-neutral-700">
                       {h.liveEvalKrw != null ? fmtShort(h.liveEvalKrw) : "—"}
                     </span>
                     <span className="w-[52px] shrink-0" />
@@ -500,11 +500,11 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                     )}
                   </div>
                   {/* 보유수 */}
-                  <span className="w-10 shrink-0 text-right text-xs tabular-nums text-neutral-500 whitespace-nowrap">
+                  <span className="w-[40px] shrink-0 text-right text-xs tabular-nums text-neutral-500 whitespace-nowrap">
                     {h.quantity.toLocaleString()}주
                   </span>
                   {/* 평가 */}
-                  <span className="w-14 shrink-0 text-right text-xs tabular-nums font-medium text-neutral-800 whitespace-nowrap">
+                  <span className="w-[56px] shrink-0 text-right text-xs tabular-nums font-medium text-neutral-800 whitespace-nowrap">
                     {h.liveEvalKrw !== null ? fmtShort(h.liveEvalKrw) : "—"}
                   </span>
                   {/* 수익율 */}

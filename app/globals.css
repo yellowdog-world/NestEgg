@@ -21,6 +21,7 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   background-color: #fafafa;
   color: #171717;
+  overflow-x: hidden; /* iOS Safari shrink-to-fit 방지 */
 }
 
 /* 브라우저 다크모드 강제 적용 차단 */
