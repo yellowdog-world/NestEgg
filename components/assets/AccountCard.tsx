@@ -250,61 +250,49 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
           </div>
         </div>
 
-        {/* 투자원금 / 평가금 / 수익률 */}
-        <div className="mt-3 grid grid-cols-3 divide-x divide-neutral-100 rounded-lg bg-neutral-50 px-0">
-          <div className="px-4 py-3">
-            <p className="text-xs text-neutral-400">투자원금</p>
-            <p className="mt-0.5 text-base font-semibold tabular-nums text-neutral-700">
-              {totalCostKrw > 0 ? fmtKRWShort(totalCostKrw) : "—"}
-            </p>
-          </div>
-          <div className="px-4 py-3">
-            <p className="text-xs text-neutral-400">평가금</p>
-            <p className="mt-0.5 text-base font-semibold tabular-nums text-neutral-900">
-              {totalEvalKrw > 0 ? fmtKRWShort(totalEvalKrw) : "—"}
-            </p>
-          </div>
-          <div className="px-4 py-3">
-            <p className="text-xs text-neutral-400">수익</p>
-            {totalCostKrw > 0 && totalEvalKrw > 0 ? (
-              (() => {
-                const gain = totalEvalKrw - totalCostKrw;
-                const pct = (gain / totalCostKrw) * 100;
-                const pos = gain >= 0;
-                return (
-                  <>
-                    <p className={`mt-0.5 text-base font-semibold tabular-nums ${pos ? "text-red-500" : "text-blue-500"}`}>
-                      {pos ? "+" : ""}{pct.toFixed(1)}%
-                    </p>
-                    <p className={`text-xs tabular-nums ${pos ? "text-red-400" : "text-blue-400"}`}>
-                      {pos ? "+" : ""}{fmtKRWShort(gain)}
-                    </p>
-                  </>
-                );
-              })()
-            ) : (
-              <p className="mt-0.5 text-base font-semibold text-neutral-300">—</p>
-            )}
-          </div>
-        </div>
+        {/* 통계 한 줄 */}
+        {(() => {
+          const gain = totalEvalKrw - totalCostKrw;
+          const pct = totalCostKrw > 0 ? (gain / totalCostKrw) * 100 : null;
+          const pos = gain >= 0;
+          return (
+            <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs tabular-nums">
+              {totalCostKrw > 0 && (
+                <>
+                  <span className="text-neutral-400">원금</span>
+                  <span className="font-semibold text-neutral-700">{fmtKRWShort(totalCostKrw)}</span>
+                  <span className="text-neutral-300">·</span>
+                </>
+              )}
+              <span className="text-neutral-400">평가</span>
+              <span className="font-semibold text-neutral-900">
+                {totalEvalKrw > 0 ? fmtKRWShort(totalEvalKrw) : "—"}
+              </span>
+              {pct !== null && totalEvalKrw > 0 && (
+                <>
+                  <span className="text-neutral-300">·</span>
+                  <span className={`font-semibold ${pos ? "text-red-500" : "text-blue-500"}`}>
+                    {pos ? "+" : ""}{pct.toFixed(1)}%
+                  </span>
+                  <span className={pos ? "text-red-400" : "text-blue-400"}>
+                    {pos ? "+" : ""}{fmtKRWShort(gain)}
+                  </span>
+                </>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* 종목 목록 */}
       {holdings.length > 0 && (
         <div className="border-t border-neutral-100">
-          {/* 헤더 */}
-          <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-5 py-2 text-xs font-medium text-neutral-400">
-            <span>종목</span>
-            <span className="text-right w-14">수량</span>
-            <span className="text-right w-24">평가금액</span>
-          </div>
-
           <div className="divide-y divide-neutral-50">
             {holdings.map((h) => {
               if (editId === h.id) {
                 // 인라인 편집 행
                 return (
-                  <div key={h.id} className="grid grid-cols-[1fr_auto_auto] gap-x-3 items-center px-5 py-3 bg-blue-50">
+                  <div key={h.id} className="grid grid-cols-[1fr_auto_auto] gap-x-3 items-center px-4 py-3 bg-blue-50">
                     <div className="text-sm font-medium text-neutral-700">{h.raw_name}</div>
                     <div className="flex flex-col gap-1 w-14">
                       <input
@@ -342,7 +330,7 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
               }
 
               if (h.isCash) {
-                // 예수금 행
+                // 예수금 행 — 한 줄
                 const balanceStr =
                   h.avg_price !== null
                     ? h.currency === "USD"
@@ -352,31 +340,23 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                 return (
                   <div
                     key={h.id}
-                    className="grid grid-cols-[1fr_auto_auto] gap-x-3 items-center px-5 py-3 bg-neutral-50/60"
+                    className="flex items-center gap-2 px-4 py-2 bg-neutral-50/60"
                   >
-                    <div>
-                      <p className="text-sm font-medium text-neutral-600">{h.raw_name}</p>
-                      <p className="mt-0.5 text-xs text-neutral-400">현금 · {h.currency}</p>
-                    </div>
-                    <div className="w-14 text-right text-xs tabular-nums text-neutral-500">
-                      {balanceStr}
-                    </div>
-                    <div className="w-24 text-right">
-                      <p className="text-sm font-semibold tabular-nums text-neutral-700">
-                        {h.liveEvalKrw != null ? fmtKRWShort(h.liveEvalKrw) : "—"}
-                      </p>
-                    </div>
+                    <span className="flex-1 truncate text-xs text-neutral-500">
+                      {h.raw_name} · {h.currency}
+                    </span>
+                    <span className="shrink-0 text-xs tabular-nums text-neutral-400">{balanceStr}</span>
+                    <span className="shrink-0 text-sm font-semibold tabular-nums text-neutral-700">
+                      {h.liveEvalKrw != null ? fmtKRWShort(h.liveEvalKrw) : "—"}
+                    </span>
                   </div>
                 );
               }
 
-              // 일반 종목 행
-              const priceStr =
-                h.livePrice != null
-                  ? h.liveCurrency === "USD"
-                    ? `$${h.livePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    : fmtKRW(h.livePrice)
-                  : null;
+              // 일반 종목 행 — 한 줄
+              // 미국 주식은 티커, 한국 주식은 종목명 표시
+              const displayName =
+                h.market !== "KRX" && h.ticker ? h.ticker : h.raw_name;
 
               const changeSign = (h.livePriceChangePercent ?? 0) >= 0;
               const returnSign = (h.liveReturnPct ?? 0) >= 0;
@@ -385,50 +365,32 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                 <div
                   key={h.id}
                   onClick={() => startEdit(h)}
-                  className="grid grid-cols-[1fr_auto_auto] gap-x-3 items-center px-5 py-3 cursor-pointer hover:bg-neutral-50 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 cursor-pointer hover:bg-neutral-50 transition-colors"
                 >
-                  {/* 종목명 + ticker + 현재가 */}
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-neutral-900">{h.raw_name}</p>
-                    <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
-                      {h.ticker && (
-                        <span className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-xs text-neutral-500">
-                          {h.ticker}
-                        </span>
-                      )}
-                      {priceStr && (
-                        <span className="text-xs text-neutral-500 tabular-nums">
-                          {priceStr}
-                          {h.livePriceChangePercent != null && (
-                            <span className={`ml-1 ${changeSign ? "text-red-500" : "text-blue-500"}`}>
-                              {changeSign ? "▲" : "▼"}
-                              {Math.abs(h.livePriceChangePercent).toFixed(2)}%
-                            </span>
-                          )}
-                        </span>
-                      )}
-                    </div>
+                  {/* 종목명(또는 티커) + 등락률 */}
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                    <span className="truncate text-sm font-medium text-neutral-900">{displayName}</span>
+                    {h.livePriceChangePercent != null && (
+                      <span className={`shrink-0 text-xs tabular-nums ${changeSign ? "text-red-500" : "text-blue-500"}`}>
+                        {changeSign ? "▲" : "▼"}{Math.abs(h.livePriceChangePercent).toFixed(2)}%
+                      </span>
+                    )}
                   </div>
 
                   {/* 수량 */}
-                  <div className="w-14 text-right">
-                    <p className="text-sm tabular-nums text-neutral-700">
-                      {h.quantity.toLocaleString()}
-                    </p>
-                    <p className="mt-0.5 text-xs text-neutral-400">주</p>
-                  </div>
+                  <span className="shrink-0 text-xs tabular-nums text-neutral-400">
+                    {h.quantity.toLocaleString()}주
+                  </span>
 
-                  {/* 평가금액 + 수익률 */}
-                  <div className="w-24 text-right">
-                    <p className="text-sm font-semibold tabular-nums text-neutral-900">
+                  {/* 평가금 + 수익률 */}
+                  <div className="shrink-0 text-right">
+                    <span className="text-sm font-semibold tabular-nums text-neutral-900">
                       {h.liveEvalKrw != null ? fmtKRWShort(h.liveEvalKrw) : "—"}
-                    </p>
-                    {h.liveReturnPct != null ? (
-                      <p className={`mt-0.5 text-xs font-medium tabular-nums ${returnSign ? "text-red-500" : "text-blue-500"}`}>
-                        {returnSign ? "+" : ""}{h.liveReturnPct.toFixed(2)}%
-                      </p>
-                    ) : (
-                      <p className="mt-0.5 text-xs text-neutral-300">—</p>
+                    </span>
+                    {h.liveReturnPct != null && (
+                      <span className={`ml-1 text-xs tabular-nums ${returnSign ? "text-red-500" : "text-blue-500"}`}>
+                        {returnSign ? "+" : ""}{h.liveReturnPct.toFixed(1)}%
+                      </span>
                     )}
                   </div>
                 </div>
