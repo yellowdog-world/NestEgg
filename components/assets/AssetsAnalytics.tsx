@@ -361,7 +361,7 @@ export function AssetsAnalytics({
 
             {/* 월별 바 차트 */}
             {yearDividends.length > 0 && (
-              <div className="h-36">
+              <div className="h-36 min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={monthlyBarData}

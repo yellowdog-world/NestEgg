@@ -40,9 +40,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full bg-neutral-50 text-neutral-900" suppressHydrationWarning>
-        <div className="mx-auto flex min-h-screen w-full max-w-6xl">
+        <div className="mx-auto flex min-h-screen w-full max-w-6xl overflow-x-hidden">
           <SideNav />
-          <div className="flex flex-1 flex-col">
+          <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
             <MobileNav />
             <main className="flex-1 px-4 py-6 md:px-8 md:py-10">{children}</main>
           </div>

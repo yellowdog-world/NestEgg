@@ -67,7 +67,7 @@ export function AssetTimeline({ data }: { data: Point[] }) {
   const maxVal = allValues.length ? Math.max(...allValues) * 1.05 : 1;
 
   return (
-    <div className="h-64 w-full">
+    <div className="h-64 w-full min-w-0">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 4 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />

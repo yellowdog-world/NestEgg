@@ -881,7 +881,7 @@ function RetirementProjectionChart({
         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 border-t-2 border-dashed border-blue-500" />순 인출액</span>
         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 border-t-2 border-dashed border-red-400" />예상 세금</span>
       </div>
-      <div className="h-56">
+      <div className="h-56 min-w-0">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 4, right: 52, left: 0, bottom: 0 }}>
             <defs>

@@ -17,11 +17,18 @@ html,
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  overflow-x: hidden; /* iOS Safari: html 레벨 가로 스크롤 차단 */
+  width: 100%;
+}
+
 body {
   font-family: Arial, Helvetica, sans-serif;
   background-color: #fafafa;
   color: #171717;
-  overflow-x: hidden; /* iOS Safari shrink-to-fit 방지 */
+  overflow-x: hidden;
+  width: 100%;
+  position: relative; /* iOS Safari 가로 바운스 방지 */
 }
 
 /* 브라우저 다크모드 강제 적용 차단 */
