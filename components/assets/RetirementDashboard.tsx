@@ -1095,7 +1095,7 @@ function TaxAnalysisSection({
       {/* ── 연금저축·IRP 세금 분석 ──────────────────────────────────────── */}
       {hasPension && (
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 flex flex-col gap-3">
-          <p className="text-base font-semibold text-neutral-700">① 연금저축·IRP — 연금소득세 시나리오</p>
+          <p className="text-base font-semibold text-neutral-700">연금저축·IRP — 연금소득세 시나리오</p>
 
           {/* 55세 이전 조기 인출 vs 정상 수령 비교 */}
           {taxData.pensionTaxSaving > 0 && (
@@ -1157,7 +1157,7 @@ function TaxAnalysisSection({
       {/* ── 주식·ETF 세금 시나리오 ──────────────────────────────────────── */}
       {hasStocks && (
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 flex flex-col gap-3">
-          <p className="text-base font-semibold text-neutral-700">② 주식·ETF — 종목 유형별 세금 시나리오</p>
+          <p className="text-base font-semibold text-neutral-700">주식·ETF — 종목 유형별 세금 시나리오</p>
           <p className="text-sm text-neutral-500">
             보유 주식·ETF {fmtKRWShort(taxData.stocksKrw)} 기준 · 미실현이익 50% 가정 (이익 {fmtKRWShort(taxData.stockGainEstimate)})
           </p>
@@ -1214,35 +1214,6 @@ function TaxAnalysisSection({
           </div>
         </div>
       )}
-
-      {/* ── 세금 최소화 인출 순서 ──────────────────────────────────────── */}
-      <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 flex flex-col gap-2.5">
-        <p className="text-base font-semibold text-blue-800">③ 세금 최소화 인출 순서</p>
-        <ol className="flex flex-col gap-2">
-          {[
-            { n: "1", title: "현금·예수금 먼저 소진",              desc: "세금 0 — 수익이 없으므로 과세 대상 아님" },
-            { n: "2", title: "국내주식 직접·국내주식형 ETF 매도",  desc: "양도세 0% — 세 부담 없이 활용, 배당은 금융소득 합산 주의" },
-            { n: "3", title: "국내상장 해외ETF 매도",               desc: `15.4% — 연 2,000만 초과 전 분산 매도 권장 (${hasStocks ? `이익 ${fmtKRWShort(taxData.stockTaxIfETF)} 추정` : ""})` },
-            { n: "4", title: "해외주식 직접 매도",                  desc: `22% — 연 250만 공제 활용, 손실 종목과 손익통산 (${hasStocks ? `이익 ${fmtKRWShort(taxData.stockTaxIfForeignNet)} 추정` : ""})` },
-            {
-              n: "5",
-              title: pensionLocked ? "55세~ 연금저축·IRP 인출 시작" : "연금저축·IRP 인출",
-              desc: `5.5%→4.4%→3.3% 연령별 감소 — 다른 소득 없을 때 실효세율 낮음${taxData.pensionTaxSaving > 0 ? ` (55세 대기 시 ${fmtKRWShort(taxData.pensionTaxSaving)} 절세)` : ""}`,
-            },
-            { n: "6", title: "65세~ 국민연금 수령",                 desc: "연금소득공제 후 타 소득과 합산 과세 — 다른 소득과 합계 확인 필요" },
-          ].map((item) => (
-            <li key={item.n} className="flex items-start gap-2">
-              <span className="w-5 h-5 shrink-0 mt-0.5 rounded-full bg-blue-200 text-blue-700 text-sm flex items-center justify-center font-bold">
-                {item.n}
-              </span>
-              <div className="text-base text-blue-700">
-                <span className="font-semibold">{item.title}</span>
-                <span className="text-blue-500"> — {item.desc}</span>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </div>
 
       {/* ── 시뮬레이션 한계 ──────────────────────────────────────────────── */}
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 flex flex-col gap-2">
@@ -1971,6 +1942,7 @@ function Dashboard({
                     taxLabel: "세금 0",
                     taxColor: "text-emerald-600 bg-emerald-50",
                     locked: false,
+                    subNote: null as string | null,
                   },
                   {
                     priority: 2,
@@ -1981,6 +1953,7 @@ function Dashboard({
                     taxLabel: "0~22%",
                     taxColor: "text-amber-700 bg-amber-50",
                     locked: false,
+                    subNote: "국내주식(0%) → 국내상장해외ETF(15.4%) → 해외직접(22%) 순 매도",
                   },
                   {
                     priority: 3,
@@ -1991,23 +1964,31 @@ function Dashboard({
                     taxLabel: pensionLocked ? "5.5%~ (55세+)" : "3.3~5.5%",
                     taxColor: "text-blue-700 bg-blue-50",
                     locked: pensionLocked,
+                    subNote: pensionLocked
+                      ? `55세 이전 해지 시 16.5% 기타소득세 — 반드시 유지`
+                      : "연령 높을수록 세율 낮아짐 (55~70세 5.5% → 80세+ 3.3%)",
                   },
                 ]
                   .filter((b) => b.show)
                   .map((b) => (
-                    <div key={b.name} className="flex items-center gap-2 rounded-md bg-white border border-neutral-100 px-3 py-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-xs font-bold text-neutral-500">
-                        {b.priority}
-                      </span>
-                      <span className="flex-1 text-base text-neutral-700">{b.name}</span>
-                      {b.locked && (
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-sm font-bold text-amber-700">🔒55세+</span>
+                    <div key={b.name} className="rounded-md bg-white border border-neutral-100 px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-xs font-bold text-neutral-500">
+                          {b.priority}
+                        </span>
+                        <span className="flex-1 text-base text-neutral-700">{b.name}</span>
+                        {b.locked && (
+                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-sm font-bold text-amber-700">🔒55세+</span>
+                        )}
+                        {b.months != null && b.months > 0 && (
+                          <span className="text-sm text-neutral-400 tabular-nums">약 {b.months}개월</span>
+                        )}
+                        <span className="text-base font-semibold tabular-nums text-neutral-800">{fmtKRWShort(b.amount)}</span>
+                        <span className={`rounded px-1.5 py-0.5 text-sm font-semibold tabular-nums ${b.taxColor}`}>{b.taxLabel}</span>
+                      </div>
+                      {b.subNote && (
+                        <p className="mt-1 pl-7 text-sm text-neutral-400">{b.subNote}</p>
                       )}
-                      {b.months != null && b.months > 0 && (
-                        <span className="text-sm text-neutral-400 tabular-nums">약 {b.months}개월</span>
-                      )}
-                      <span className="text-base font-semibold tabular-nums text-neutral-800">{fmtKRWShort(b.amount)}</span>
-                      <span className={`rounded px-1.5 py-0.5 text-sm font-semibold tabular-nums ${b.taxColor}`}>{b.taxLabel}</span>
                     </div>
                   ))}
               </div>
@@ -2017,29 +1998,6 @@ function Dashboard({
                 </p>
               )}
             </div>
-
-            {/* 55세 이전 연금 조기 인출 패널티 경고 */}
-            {pensionTaxSaving > 0 && (
-              <div className="rounded-lg border border-orange-200 bg-orange-50 p-3.5">
-                <p className="text-base font-semibold text-orange-800">
-                  ⚠️ 55세까지 대기하면 연금 세금 {fmtKRWShort(pensionTaxSaving)} 절약
-                </p>
-                <div className="mt-2.5 flex flex-col gap-1.5 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-orange-700">지금 전액 인출 (기타소득세 16.5%)</span>
-                    <span className="font-bold tabular-nums text-red-600">−{fmtKRWShort(earlyPensionTaxTotal)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-orange-700">55세 이후 순차 수령 (연금소득세 5.5%~)</span>
-                    <span className="font-bold tabular-nums text-emerald-700">−{fmtKRWShort(normalPensionTaxTotal)}</span>
-                  </div>
-                  <div className="flex items-center justify-between border-t border-orange-200 pt-1.5 text-base font-bold">
-                    <span className="text-orange-800">💡 절세 효과</span>
-                    <span className="tabular-nums text-emerald-700">+{fmtKRWShort(pensionTaxSaving)}</span>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* 단계별 인출 계획 */}
             <div className="flex flex-col gap-1.5">
