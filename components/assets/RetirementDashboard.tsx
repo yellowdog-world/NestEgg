@@ -1038,7 +1038,7 @@ function SliderPanel({
           const pct = Math.max(0, Math.min(100, ((value - effectiveMin) / (s.max - effectiveMin)) * 100));
           return (
             <div key={s.key} className="flex flex-col gap-1">
-              <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center justify-between text-xs">
                 <span className="text-neutral-500">{s.label}</span>
                 <span className="font-semibold tabular-nums text-neutral-900">
                   {s.format(value)}
@@ -1061,7 +1061,7 @@ function SliderPanel({
                   backgroundImage: `linear-gradient(to right, #f59e0b ${pct}%, #e5e7eb ${pct}%)`,
                 }}
               />
-              <div className="flex justify-between text-[9px] text-neutral-400">
+              <div className="flex justify-between text-[11px] text-neutral-400">
                 <span>{s.format(effectiveMin)}</span>
                 <span>{s.format(s.max)}</span>
               </div>
