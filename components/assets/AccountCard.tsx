@@ -270,18 +270,18 @@ export function AccountCard({ account, capturedAt, holdings, totalEvalKrw, total
                   <span className="text-neutral-300">·</span>
                 </>
               )}
-              <span className="text-neutral-400">평가</span>
+              <span className="text-neutral-400">평가금</span>
               <span className="font-semibold text-neutral-900">
                 {totalEvalKrw > 0 ? fmtKRWShort(totalEvalKrw) : "—"}
               </span>
               {pct !== null && totalEvalKrw > 0 && (
                 <>
                   <span className="text-neutral-300">·</span>
-                  <span className={`font-semibold ${pos ? "text-red-500" : "text-blue-500"}`}>
-                    {pos ? "+" : ""}{pct.toFixed(1)}%
-                  </span>
                   <span className={pos ? "text-red-400" : "text-blue-400"}>
                     {pos ? "+" : ""}{fmtKRWShort(gain)}
+                  </span>
+                  <span className={`font-semibold ${pos ? "text-red-500" : "text-blue-500"}`}>
+                    {pos ? "+" : ""}{pct.toFixed(1)}%
                   </span>
                 </>
               )}
