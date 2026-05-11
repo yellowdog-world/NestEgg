@@ -1,5 +1,5 @@
 // 보유 종목 → 전략 카테고리 분류
-// 우선순위: 현금 → 커버드콜 → 미국나스닥 → 미국S&P → 배당주 → 미국직투 → 한국직투
+// 우선순위: 현금 → 커버드콜 → 미국나스닥 → 미국S&P → 배당주 → 미국직투 → 한국직투 → 기타
 
 export type AssetCategory =
   | "현금"
@@ -8,7 +8,8 @@ export type AssetCategory =
   | "미국S&P"
   | "배당주"
   | "미국직투"
-  | "한국직투";
+  | "한국직투"
+  | "기타";
 
 export const ALL_CATEGORIES: AssetCategory[] = [
   "미국나스닥",
@@ -18,6 +19,7 @@ export const ALL_CATEGORIES: AssetCategory[] = [
   "미국직투",
   "한국직투",
   "현금",
+  "기타",
 ];
 
 export const CATEGORY_META: Record<
@@ -31,6 +33,7 @@ export const CATEGORY_META: Record<
   "미국직투":   { label: "미국직투",  color: "#8b5cf6", order: 4 },
   "한국직투":   { label: "한국직투",  color: "#ef4444", order: 5 },
   "현금":       { label: "현금",      color: "#9ca3af", order: 6 },
+  "기타":       { label: "기타",      color: "#d1d5db", order: 7 },
 };
 
 // ── 티커별 고정 분류 (이름 패턴보다 우선) ─────────────────────────────────
@@ -101,8 +104,11 @@ export function classifyHolding(
   // ⑥ 미국직투 — 미국 거래소 상장 종목 (ETF·개별주 모두)
   if (market && ["NASDAQ", "NYSE", "AMEX"].includes(market)) return "미국직투";
 
-  // ⑦ 한국직투 — 그 외 (KRX 개별주, 미분류 KRX ETF 등)
-  return "한국직투";
+  // ⑦ 한국직투 — KRX 상장 종목 (개별주 + 미분류 ETF)
+  if (market === "KRX") return "한국직투";
+
+  // ⑧ 기타 — 매핑 안된 자산 (ticker/market 미확인)
+  return "기타";
 }
 
 // ── 집계 헬퍼 ─────────────────────────────────────────────────────────────

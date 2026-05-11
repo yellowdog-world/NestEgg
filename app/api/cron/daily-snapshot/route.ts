@@ -120,7 +120,7 @@ export async function GET(req: Request) {
           ticker: info?.ticker ?? null,
           market: info?.market ?? null,
           quantity: qty,
-          currency: h.currency,
+          currency: h.currency,      // USD or KRW (환 노출 계산용)
           eval_krw: Math.round(evalKrw),
         });
       }
@@ -141,13 +141,20 @@ export async function GET(req: Request) {
 
     const allHoldingFlat = accountBreakdowns.flatMap((a) => a.holdings);
     const categoryBreakdown = aggregateByCategory(allHoldingFlat);
+    const usdTotalKrw = Math.round(
+      allHoldingFlat.filter((h) => h.currency === "USD").reduce((s, h) => s + h.eval_krw, 0),
+    );
 
     rows.push({
       user_id: userId,
       snapshot_date: today,
       total_krw: Math.round(totalKrw),
       usd_krw_rate: usdKrw,
-      breakdown: { accounts: accountBreakdowns, category_breakdown: categoryBreakdown },
+      breakdown: {
+        accounts: accountBreakdowns,
+        category_breakdown: categoryBreakdown,
+        usd_total_krw: usdTotalKrw,   // 환 노출 추이용
+      },
     });
   }
 
