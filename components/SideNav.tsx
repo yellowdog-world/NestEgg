@@ -15,8 +15,9 @@ const sections = [
     exact: true,
     children: [
       { href: "/assets", label: "내 자산", exact: true },
-      { href: "/assets/history", label: "자산 추이", icon: TrendingUp },
-      { href: "/assets/retirement", label: "은퇴시뮬", icon: PiggyBank },
+      { href: "/assets/history", label: "자산 추이" },
+      { href: "/assets/goals", label: "투자 목표" },
+      { href: "/assets/retirement", label: "은퇴시뮬" },
     ],
   },
 ];
