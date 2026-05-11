@@ -153,6 +153,10 @@ function normalize(s: string) {
 
 const NORMALIZED = new Map(Object.entries(RAW_MAP).map(([k, v]) => [normalize(k), v]));
 
+// 퍼지 매칭용: 정규화된 키 배열 (정렬 불필요, 길이 내림차순으로 저장해 가장 구체적인 매치 우선)
+const NORMALIZED_ENTRIES: [string, TickerInfo][] = [...NORMALIZED.entries()]
+  .sort((a, b) => b[0].length - a[0].length);
+
 // 역방향: ticker → (첫 번째 등록된 한국어 이름, TickerInfo)
 const TICKER_TO_ENTRY = new Map<string, { name: string; info: TickerInfo }>();
 for (const [name, info] of Object.entries(RAW_MAP)) {
@@ -197,6 +201,30 @@ export function lookupTicker(rawName: string): TickerInfo | null {
     const fromMap = NORMALIZED.get(normalize(lastWord));
     if (fromMap) return fromMap;
     return { ticker: lastWord, market: "NASDAQ", currency: "USD" };
+  }
+  // 5. 접두어 퍼지 매치 — OCR이 이름을 잘리거나 살짝 다르게 읽은 경우 대응
+  //    케이스 A: mapKey.startsWith(n) — OCR이 끝을 잘라냄 → suffix가 가장 짧은 키 선택
+  //    케이스 B: n.startsWith(mapKey) — OCR이 뒤에 글자를 추가 → prefix가 가장 긴 키 선택
+  const MIN_FUZZY = 8;
+  if (n.length >= MIN_FUZZY) {
+    let caseAInfo: TickerInfo | null = null;
+    let caseAMinLen = Infinity;
+    let caseBInfo: TickerInfo | null = null;
+    let caseBMaxLen = 0;
+
+    for (const [mapN, info] of NORMALIZED_ENTRIES) {
+      if (mapN.length < MIN_FUZZY) continue;
+      if (mapN.startsWith(n) && mapN.length < caseAMinLen) {
+        caseAMinLen = mapN.length;
+        caseAInfo = info;
+      } else if (n.startsWith(mapN) && mapN.length > caseBMaxLen) {
+        caseBMaxLen = mapN.length;
+        caseBInfo = info;
+      }
+    }
+    // 잘림(A) 우선, 없으면 추가(B)
+    if (caseAInfo) return caseAInfo;
+    if (caseBInfo) return caseBInfo;
   }
   return null;
 }

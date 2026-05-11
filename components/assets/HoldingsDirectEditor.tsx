@@ -14,11 +14,11 @@ type Row = {
 };
 
 type Props = {
-  snapshotId: string;
+  accountId: string;
   initial: Row[];
 };
 
-export function HoldingsDirectEditor({ snapshotId, initial }: Props) {
+export function HoldingsDirectEditor({ accountId, initial }: Props) {
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>(initial);
   const [saving, setSaving] = useState(false);
@@ -29,27 +29,29 @@ export function HoldingsDirectEditor({ snapshotId, initial }: Props) {
     setRows((prev) => prev.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   }
 
-  async function onTickerBlur(i: number) {
-    const ticker = rows[i].ticker.trim().toUpperCase();
+  async function onTickerBlur(i: number, rawValue: string) {
+    const ticker = rawValue.trim().toUpperCase();
     if (!ticker) return;
 
-    // 1. 클라이언트 역방향 맵 (즉시)
+    // 1. 클라이언트 역방향 맵 (즉시) — 항상 이름 덮어쓰기
     const found = lookupByTicker(ticker);
     if (found) {
-      const patch: Partial<Row> = { ticker: found.info.ticker, currency: found.info.currency };
-      if (!rows[i].raw_name) patch.raw_name = found.name;
-      update(i, patch);
+      update(i, {
+        ticker: found.info.ticker,
+        currency: found.info.currency,
+        raw_name: found.name,
+      });
       return;
     }
 
-    // 2. 서버에서 조회 (KRX 6자리 → Naver, US 패턴)
+    // 2. 서버에서 조회 (DB → Naver → Yahoo) — 항상 이름 덮어쓰기
     setResolving((prev) => new Set(prev).add(i));
     try {
       const res = await fetch(`/api/market/resolve?ticker=${encodeURIComponent(ticker)}`);
       if (res.ok) {
         const d = await res.json() as { name: string | null; market: string | null; currency: string | null };
         const patch: Partial<Row> = {};
-        if (!rows[i].raw_name && d.name) patch.raw_name = d.name;
+        if (d.name) patch.raw_name = d.name;
         if (d.currency === "KRW" || d.currency === "USD") patch.currency = d.currency;
         if (Object.keys(patch).length) update(i, patch);
       }
@@ -90,7 +92,7 @@ export function HoldingsDirectEditor({ snapshotId, initial }: Props) {
       });
       setRows(resolved);
 
-      const res = await fetch(`/api/snapshots/${snapshotId}`, {
+      const res = await fetch(`/api/accounts/${accountId}/holdings`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -143,8 +145,12 @@ export function HoldingsDirectEditor({ snapshotId, initial }: Props) {
                   <input
                     value={r.raw_name}
                     onChange={(e) => update(i, { raw_name: e.target.value })}
-                    placeholder="종목명"
-                    className="w-full rounded border border-neutral-200 bg-white px-2 py-1 text-sm"
+                    placeholder={resolving.has(i) ? "조회 중…" : "종목명"}
+                    className={`w-full rounded border px-2 py-1 text-sm transition-colors ${
+                      resolving.has(i)
+                        ? "border-blue-200 bg-blue-50 text-neutral-400"
+                        : "border-neutral-200 bg-white"
+                    }`}
                   />
                 </td>
                 {isCash ? (
@@ -180,7 +186,7 @@ export function HoldingsDirectEditor({ snapshotId, initial }: Props) {
                         <input
                           value={r.ticker}
                           onChange={(e) => update(i, { ticker: e.target.value.toUpperCase() })}
-                          onBlur={() => onTickerBlur(i)}
+                          onBlur={(e) => onTickerBlur(i, e.target.value)}
                           placeholder="QQQ"
                           className="w-20 rounded border border-neutral-200 bg-white px-2 py-1 font-mono text-xs"
                         />
