@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { lookupTicker } from "@/lib/market/ticker-map";
-
 // ── 타입 ─────────────────────────────────────────────────────────────────────
 
 // OCR이 읽어드린 5개 필드 중 어느 것을 컬럼에 매핑할지
@@ -44,27 +42,9 @@ type Holding = {
   _ocr_eval?: number | null;
   _ocr_pl?: number | null;
   _delete?: boolean;
+  _isExisting?: boolean;  // 이번 OCR이 아닌 기존 등록 종목
 };
 
-type ExistingH = {
-  id: string;
-  raw_name: string;
-  quantity: number;
-  avg_price: number | null;
-  market_price: number | null;
-  eval_amount: number | null;
-  profit_loss: number | null;
-  currency: string;
-  security_ticker: string | null;
-  security_market: string | null;
-};
-
-type ConflictEntry = {
-  key: string;
-  existing: ExistingH;
-  newH: Holding;
-  resolution: "merge" | "keep_old" | null;
-};
 
 type Props = {
   snapshotId: string;
@@ -73,43 +53,6 @@ type Props = {
 };
 
 // ── 유틸 ─────────────────────────────────────────────────────────────────────
-
-function matchKey(h: { raw_name: string; security_ticker?: string | null }): string {
-  const ticker = h.security_ticker ?? lookupTicker(h.raw_name)?.ticker;
-  if (ticker) return `ticker:${ticker.toUpperCase()}`;
-  return `name:${h.raw_name.replace(/\s+/g, "").toLowerCase()}`;
-}
-
-function mergeHoldings(existing: ExistingH, newH: Holding): Holding {
-  const qty = existing.quantity + newH.quantity;
-  let avg: number | null = null;
-  if (existing.avg_price != null && newH.avg_price != null) {
-    avg = (existing.quantity * existing.avg_price + newH.quantity * newH.avg_price) / qty;
-  } else {
-    avg = existing.avg_price ?? newH.avg_price;
-  }
-  return {
-    raw_name: newH.raw_name || existing.raw_name,
-    quantity: qty,
-    avg_price: avg,
-    market_price: newH.market_price ?? existing.market_price,
-    eval_amount: null,
-    profit_loss: null,
-    currency: newH.currency || (existing.currency as "KRW" | "USD"),
-  };
-}
-
-function existingToHolding(e: ExistingH): Holding {
-  return {
-    raw_name: e.raw_name,
-    quantity: e.quantity,
-    avg_price: e.avg_price,
-    market_price: e.market_price,
-    eval_amount: e.eval_amount,
-    profit_loss: e.profit_loss,
-    currency: e.currency as "KRW" | "USD",
-  };
-}
 
 // ── 숫자 포맷 인풋 ────────────────────────────────────────────────────────────
 
@@ -189,10 +132,6 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
     );
   }
 
-  const [conflicts, setConflicts] = useState<ConflictEntry[]>([]);
-  const [carryOver, setCarryOver] = useState<ExistingH[]>([]);
-  const [showModal, setShowModal] = useState(false);
-
   function update(idx: number, patch: Partial<Holding>) {
     setHoldings((prev) => prev.map((h, i) => (i === idx ? { ...h, ...patch } : h)));
   }
@@ -259,116 +198,13 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
 
   async function handleConfirm() {
     const newList = holdings.filter((h) => !h._delete);
-    let existing: ExistingH[] = [];
-    try {
-      const r = await fetch(`/api/accounts/${accountId}/holdings`);
-      const d = await r.json();
-      existing = (d.holdings ?? []).map((e: ExistingH) => ({
-        ...e,
-        quantity: Number(e.quantity),
-        avg_price: e.avg_price != null ? Number(e.avg_price) : null,
-        market_price: e.market_price != null ? Number(e.market_price) : null,
-        eval_amount: e.eval_amount != null ? Number(e.eval_amount) : null,
-        profit_loss: e.profit_loss != null ? Number(e.profit_loss) : null,
-      }));
-    } catch {
-      await callSaveApi(newList, true);
-      return;
-    }
-    if (!existing.length) { await callSaveApi(newList, true); return; }
-
-    const matchedExistingKeys = new Set<string>();
-    const detected: ConflictEntry[] = [];
-    for (const newH of newList) {
-      const newKey = matchKey({ raw_name: newH.raw_name });
-      const found = existing.find((e) => matchKey(e) === newKey);
-      if (found) { detected.push({ key: newKey, existing: found, newH, resolution: null }); matchedExistingKeys.add(matchKey(found)); }
-    }
-    const carry = existing.filter((e) => !matchedExistingKeys.has(matchKey(e)));
-    if (!detected.length) { await callSaveApi([...carry.map(existingToHolding), ...newList], true); return; }
-    setConflicts(detected);
-    setCarryOver(carry);
-    setShowModal(true);
+    await callSaveApi(newList, true);
   }
 
-  function resolveAll(resolution: "merge" | "keep_old") {
-    setConflicts((prev) => prev.map((c) => ({ ...c, resolution })));
-  }
-
-  async function applyResolution() {
-    const newList = holdings.filter((h) => !h._delete);
-    const conflictNewKeys = new Set(conflicts.map((c) => matchKey({ raw_name: c.newH.raw_name })));
-    const final: Holding[] = [];
-    for (const newH of newList) {
-      const key = matchKey({ raw_name: newH.raw_name });
-      const conflict = conflicts.find((c) => c.key === key);
-      if (!conflict) { final.push(newH); }
-      else if (conflict.resolution === "merge") { final.push(mergeHoldings(conflict.existing, newH)); }
-    }
-    for (const c of conflicts) { if (c.resolution === "keep_old") final.push(existingToHolding(c.existing)); }
-    for (const e of carryOver) final.push(existingToHolding(e));
-    setShowModal(false);
-    await callSaveApi(final, true);
-    void conflictNewKeys;
-  }
-
-  const allResolved = conflicts.length > 0 && conflicts.every((c) => c.resolution !== null);
   const [showOcrRaw, setShowOcrRaw] = useState(false);
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 중복 처리 모달 */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8">
-          <div className="w-full max-w-lg rounded-xl bg-white p-5 shadow-xl">
-            <h3 className="mb-1 text-base font-semibold">이미 등록된 종목이 있어요</h3>
-            <p className="mb-4 text-sm text-neutral-500">종목별로 처리 방법을 선택하세요.</p>
-            <div className="mb-3 flex gap-2">
-              <button onClick={() => resolveAll("merge")} className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white">전체 합치기</button>
-              <button onClick={() => resolveAll("keep_old")} className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs">전체 기존 유지</button>
-            </div>
-            <div className="flex flex-col gap-3">
-              {conflicts.map((c, i) => (
-                <div key={i} className="rounded-lg border border-neutral-200 p-3">
-                  <div className="mb-2 font-medium">{c.existing.raw_name}</div>
-                  <div className="mb-2 grid grid-cols-2 gap-2 text-xs">
-                    <div className="rounded bg-neutral-50 p-2">
-                      <div className="mb-1 font-medium text-neutral-500">기존</div>
-                      <div>수량 {c.existing.quantity.toLocaleString()}</div>
-                      {c.existing.avg_price != null && <div>평단가 {c.existing.avg_price.toLocaleString()}</div>}
-                    </div>
-                    <div className="rounded bg-blue-50 p-2">
-                      <div className="mb-1 font-medium text-blue-500">신규</div>
-                      <div>수량 {c.newH.quantity.toLocaleString()}</div>
-                      {c.newH.avg_price != null && <div>평단가 {c.newH.avg_price.toLocaleString()}</div>}
-                    </div>
-                  </div>
-                  {c.resolution === "merge" && c.existing.avg_price != null && c.newH.avg_price != null && (
-                    <div className="mb-2 rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-800">
-                      합산 수량 {(c.existing.quantity + c.newH.quantity).toLocaleString()} · 평단가{" "}
-                      {((c.existing.quantity * c.existing.avg_price + c.newH.quantity * c.newH.avg_price) / (c.existing.quantity + c.newH.quantity)).toLocaleString(undefined, { maximumFractionDigits: 4 })}
-                    </div>
-                  )}
-                  <div className="flex gap-2">
-                    <button onClick={() => setConflicts((prev) => prev.map((x, j) => j === i ? { ...x, resolution: "merge" } : x))}
-                      className={`flex-1 rounded py-1.5 text-xs font-medium ${c.resolution === "merge" ? "bg-emerald-600 text-white" : "border border-neutral-300"}`}>합치기</button>
-                    <button onClick={() => setConflicts((prev) => prev.map((x, j) => j === i ? { ...x, resolution: "keep_old" } : x))}
-                      className={`flex-1 rounded py-1.5 text-xs font-medium ${c.resolution === "keep_old" ? "bg-neutral-800 text-white" : "border border-neutral-300"}`}>기존 유지</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {carryOver.length > 0 && <p className="mt-3 text-xs text-neutral-400">중복이 아닌 기존 종목 {carryOver.length}개는 자동으로 유지됩니다.</p>}
-            <div className="mt-4 flex gap-2">
-              <button onClick={applyResolution} disabled={!allResolved || saving} className="flex-1 rounded-md bg-emerald-600 py-2 text-sm font-medium text-white disabled:opacity-40">
-                {saving ? "저장 중…" : "확인 완료"}
-              </button>
-              <button onClick={() => setShowModal(false)} className="rounded-md border border-neutral-300 px-4 py-2 text-sm">취소</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* OCR 원본 값 토글 */}
       {hasOcr && (
         <div>
@@ -479,12 +315,11 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
               const avgMissing = !isCash && h.avg_price == null;
               const isResolving = resolving[i];
 
-
               return (
                 <tr
                   key={i}
                   className={`${h._delete ? "opacity-30 line-through" : ""} ${
-                    isCash ? "bg-neutral-50/60" : "hover:bg-neutral-50/40"
+                    isCash ? "bg-neutral-50/60" : h._isExisting ? "bg-blue-50/30" : "hover:bg-neutral-50/40"
                   } transition-colors`}
                 >
                   {/* 종목명 */}
@@ -499,6 +334,11 @@ export function HoldingsEditor({ snapshotId, accountId, initial }: Props) {
                       {isResolving && (
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 animate-pulse">
                           조회 중…
+                        </span>
+                      )}
+                      {h._isExisting && !isResolving && (
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 rounded bg-blue-100 px-1 py-0.5 text-[9px] font-medium text-blue-500">
+                          기존
                         </span>
                       )}
                     </div>
